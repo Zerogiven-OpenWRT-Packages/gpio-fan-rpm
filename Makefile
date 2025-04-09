@@ -1,33 +1,42 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=gpio-fan-rpm
-PKG_VERSION:=1.0
+PKG_VERSION:=1.0.0
 PKG_RELEASE:=1
 
 PKG_MAINTAINER:=YourName
 PKG_LICENSE:=MIT
 
+PKG_BUILD_DEPENDS:=libgpiod libjson-c
+PKG_FIXUP:=autoreconf
+
 include $(INCLUDE_DIR)/package.mk
+include release.mk
 
 define Package/$(PKG_NAME)
   SECTION:=utils
   CATEGORY:=Utilities
   TITLE:=GPIO Fan RPM Monitor
+  DEPENDS:=+libgpiod +libjson-c +libpthread
 endef
 
 define Package/$(PKG_NAME)/description
-  This package installs a utility that measures fan RPM by counting falling
-  edges on GPIO input pins using sysfs and poll(). It supports multiple GPIOs,
-  numeric output for monitoring systems, and live updates.
+  gpio-fan-rpm measures fan speed (RPM) by counting GPIO edge events.
+  It uses libgpiod v2 with multithreaded edge detection and supports multiple GPIOs,
+  JSON/numeric/collectd outputs, and a warm-up phase for stable readings.
 endef
 
-TARGET_CFLAGS += $(FPIC)
+# Enable pthread and link required libraries
+TARGET_CFLAGS += -Wall -Wextra -pthread $(FPIC)
+TARGET_LDFLAGS += -pthread
+TARGET_LIBS := -ljson-c -lgpiod
 
 define Build/Compile
 	$(MAKE) -C $(PKG_BUILD_DIR) \
 		CC="$(TARGET_CC)" \
 		CFLAGS="$(TARGET_CFLAGS)" \
-		LDFLAGS="$(TARGET_LDFLAGS)"
+		LDFLAGS="$(TARGET_LDFLAGS)" \
+		LIBS="$(TARGET_LIBS)"
 endef
 
 define Package/$(PKG_NAME)/install
@@ -35,4 +44,4 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/gpio-fan-rpm $(1)/usr/sbin/gpio-fan-rpm
 endef
 
-$(eval $(call BuildPackage,gpio-fan-rpm))
+$(eval $(call BuildPackage,$(PKG_NAME)))

@@ -1,171 +1,183 @@
 // args.c
-// Handles command-line argument parsing for gpio-fan-rpm
+// Command-line argument parser for gpio-fan-rpm
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <getopt.h>
 #include "gpio-fan-rpm.h"
 
-// Helper to split "gpio:chip" or just "gpio"
-void parse_gpio_argument(const char *arg, gpio_info_t *info, int default_pulses, const char *default_chip)
+// Sanitize chip name by stripping /dev/ prefix if present
+void sanitize_chip_name(char *chip_name)
 {
-    if (!arg || !info) return;
+    const char *prefix = "/dev/";
+    size_t prefix_len = strlen(prefix);
 
-    info->gpio_rel = -1;
-    info->base = -1;
-    info->pulses_per_rev = default_pulses;
-    info->valid = 1;
-
-    const char *colon = strchr(arg, ':');
-    if (colon) {
-        char gpio_part[16] = {0};
-        size_t len = colon - arg;
-        if (len >= sizeof(gpio_part)) len = sizeof(gpio_part) - 1;
-        strncpy(gpio_part, arg, len);
-        info->gpio_rel = atoi(gpio_part);
-        strncpy(info->chip, colon + 1, MAX_CHIP_NAME - 1);
-        info->chip[MAX_CHIP_NAME - 1] = '\0';
-    } else {
-        info->gpio_rel = atoi(arg);
-        if (default_chip && strlen(default_chip) > 0) {
-            strncpy(info->chip, default_chip, MAX_CHIP_NAME - 1);
-            info->chip[MAX_CHIP_NAME - 1] = '\0';
-        } else {
-            info->chip[0] = '\0';
-        }
+    if (strncmp(chip_name, prefix, prefix_len) == 0)
+    {
+        memmove(chip_name, chip_name + prefix_len, strlen(chip_name + prefix_len) + 1);
     }
 }
 
+// Helper to check long or short option match
+int is_option(const char *arg, const char *longopt, const char *shortopt)
+{
+    return (strncmp(arg, longopt, strlen(longopt)) == 0 || strcmp(arg, shortopt) == 0);
+}
+
+// Extract value from "--key=value" or return NULL
+const char *get_value(const char *arg)
+{
+    const char *eq = strchr(arg, '=');
+    return (eq && *(eq + 1)) ? eq + 1 : NULL;
+}
+
+// Parse command-line arguments and return the config structure
 config_t parse_arguments(int argc, char *argv[])
 {
-    config_t cfg;
-    memset(&cfg, 0, sizeof(cfg));
+    config_t cfg = {0};
+
+    // Defaults
     cfg.duration = 2;
     cfg.pulses_per_rev = 2;
-    cfg.default_base = -1;
-    cfg.default_chip[0] = 0;
+    strncpy(cfg.default_chip, "gpiochip0", sizeof(cfg.default_chip) - 1);
 
-    static struct option long_opts[] = {
-        {"gpio", required_argument, 0, 'g'},
-        {"gpio-base", required_argument, 0, 'b'},
-        {"gpiochip", required_argument, 0, 'c'},
-        {"duration", required_argument, 0, 'd'},
-        {"pulses-per-rev", required_argument, 0, 'p'},
-        {"numeric", no_argument, 0, 'n'},
-        {"json", no_argument, 0, 'j'},
-        {"collectd", no_argument, 0, 1000},
-        {"watch", no_argument, 0, 'w'},
-        {"debug", no_argument, 0, 1001},
-        {"help", no_argument, 0, 'h'},
-        {0, 0, 0, 0}
-    };
-
-    opterr = 0;
-    int opt, longidx;
-    while ((opt = getopt_long(argc, argv, "g:b:c:d:p:njwh", long_opts, &longidx)) != -1)
+    for (int i = 1; i < argc; i++)
     {
-        switch (opt)
+        const char *arg = argv[i];
+        const char *val = NULL;
+
+        if (strncmp(arg, "--", 2) == 0 && strchr(arg, '='))
         {
-        case 'g':
-            if (cfg.gpio_count < MAX_GPIOS)
-            {
-                parse_gpio_argument(optarg, &cfg.gpios[cfg.gpio_count],
-                                    cfg.pulses_per_rev, cfg.default_chip);
-                cfg.gpio_count++;
-            }
-            break;
-        case 'b':
-            cfg.default_base = atoi(optarg);
-            break;
-        case 'c':
-            strncpy(cfg.default_chip, optarg, MAX_CHIP_NAME - 1);
-            cfg.default_chip[MAX_CHIP_NAME - 1] = '\0';
-            cfg.default_base = read_gpio_base(cfg.default_chip);
-            break;
-        case 'd':
-            cfg.duration = atoi(optarg);
-            break;
-        case 'p':
-            cfg.pulses_per_rev = atoi(optarg);
-            break;
-        case 'n':
-            cfg.numeric_output = 1;
-            break;
-        case 'j':
-            cfg.json_output = 1;
-            break;
-        case 1000:
-            cfg.collectd_output = 1;
-            break;
-        case 'w':
-            cfg.watch_mode = 1;
-            break;
-        case 1001:
-            cfg.debug = 1;
-            break;
-        case 'h':
-            cfg.show_help = 1;
-            break;
+            val = get_value(arg);
         }
-    }
 
-    // Auto-detect chip/base fallback if missing
-    if (!cfg.show_help) detect_chip_and_base(&cfg);
-
-    for (int i = optind; i < argc; i++)
-    {
-        if (cfg.gpio_count < MAX_GPIOS)
+        if (is_option(arg, "--gpio", "-g"))
         {
-            parse_gpio_argument(argv[i], &cfg.gpios[cfg.gpio_count],
-                                cfg.pulses_per_rev, cfg.default_chip);
+            if (!val && i + 1 < argc)
+                val = argv[++i];
+            if (!val)
+                goto error;
+            if (cfg.gpio_count >= MAX_GPIOS)
+            {
+                fprintf(stderr, "Too many GPIOs specified (max %d)\n", MAX_GPIOS);
+                exit(EXIT_FAILURE);
+            }
+            int idx = cfg.gpio_count;
+            cfg.gpios[idx].gpio_rel = atoi(val);
+            cfg.gpios[idx].pulses_per_rev = -1;
+            strncpy(cfg.gpios[idx].chip, cfg.default_chip, sizeof(cfg.gpios[idx].chip) - 1);
             cfg.gpio_count++;
         }
-    }
-
-    // Auto-detect chip + base if still missing and not just --help
-    if ((cfg.default_chip[0] == 0 || cfg.default_base <= 0) && !cfg.show_help)
-    {
-        cfg.default_base = default_gpio_base(cfg.default_chip, MAX_CHIP_NAME);
-        if (cfg.debug)
+        else if (is_option(arg, "--chip", "-c"))
         {
-            fprintf(stderr, "[DEBUG] auto-detected chip: %s (base %d)\n",
-                    cfg.default_chip, cfg.default_base);
+            if (!val && i + 1 < argc)
+                val = argv[++i];
+            if (!val)
+                goto error;
+            strncpy(cfg.default_chip, val, sizeof(cfg.default_chip) - 1);
+            sanitize_chip_name(cfg.default_chip);
         }
+        else if (is_option(arg, "--duration", "-d"))
+        {
+            if (!val && i + 1 < argc)
+                val = argv[++i];
+            if (!val)
+                goto error;
+            cfg.duration = atoi(val);
+        }
+        else if (is_option(arg, "--pulses", "-p"))
+        {
+            if (!val && i + 1 < argc)
+                val = argv[++i];
+            if (!val)
+                goto error;
+            cfg.pulses_per_rev = atoi(val);
+        }
+        else if (is_option(arg, "--numeric", ""))
+        {
+            cfg.numeric_output = 1;
+        }
+        else if (is_option(arg, "--json", ""))
+        {
+            cfg.json_output = 1;
+        }
+        else if (is_option(arg, "--collectd", ""))
+        {
+            cfg.collectd_output = 1;
+        }
+        else if (is_option(arg, "--quiet", "-q"))
+        {
+            cfg.output_quiet = 1;
+        }
+        else if (is_option(arg, "--debug", ""))
+        {
+            cfg.debug = 1;
+        }
+        else if (is_option(arg, "--watch", "-w"))
+        {
+            cfg.watch_mode = 1;
+        }
+        else if (is_option(arg, "--help", "-h"))
+        {
+            cfg.show_help = 1;
+        }
+        else
+        {
+            fprintf(stderr, "Unknown option: %s\n", arg);
+            cfg.show_help = 1;
+        }
+
+        continue;
+
+    error:
+        fprintf(stderr, "Missing or invalid value for option: %s\n", arg);
+        cfg.show_help = 1;
     }
 
+    // Apply global pulses_per_rev if not set per-GPIO
     for (int i = 0; i < cfg.gpio_count; i++)
     {
-        if (cfg.gpios[i].chip[0] == 0)
+        if (cfg.gpios[i].pulses_per_rev <= 0)
+            cfg.gpios[i].pulses_per_rev = cfg.pulses_per_rev;
+    }
+
+    if (cfg.debug)
+    {
+        printf("[DEBUG] Parsed args: duration=%d, pulses_per_rev=%d, gpios=%d\n", cfg.duration, cfg.pulses_per_rev, cfg.gpio_count);
+               
+        for (int i = 0; i < cfg.gpio_count; i++)
         {
-            strncpy(cfg.gpios[i].chip, cfg.default_chip, MAX_CHIP_NAME - 1);
-            cfg.gpios[i].chip[MAX_CHIP_NAME - 1] = '\0';
-        }
-        if (cfg.gpios[i].base <= 0)
-        {
-            cfg.gpios[i].base = cfg.default_base;
+            printf("[DEBUG] GPIO %d: chip=%s, pulses=%d\n",
+                   cfg.gpios[i].gpio_rel,
+                   cfg.gpios[i].chip,
+                   cfg.gpios[i].pulses_per_rev);
         }
     }
 
     return cfg;
 }
 
+// Help output
 void print_help(const char *prog)
 {
-    if (!prog) prog = "gpio-fan-rpm";
-    printf("Usage: %s [<gpio>[:chip]]... [options]\n\n", prog);
+    printf("\nUsage: %s [options]\n\n", prog);
     printf("Options:\n");
-    printf("  -g, --gpio=<n>            Relative GPIO number (can repeat)\n");
-    printf("      --gpio=n:chip         GPIO number with specific chip\n");
-    printf("  -b, --gpio-base=<n>       Manually set GPIO base\n");
-    printf("  -c, --gpiochip=<name>     Set default GPIO chip name\n");
-    printf("  -d, --duration=<s>        Duration per measurement (default: 2)\n");
-    printf("  -p, --pulses-per-rev=<n>  Pulses per revolution (default: 2)\n");
-    printf("  -n, --numeric             Output only RPM numbers (per line)\n");
-    printf("  -j, --json                Output RPM in JSON format\n");
-    printf("      --collectd            Output in collectd Exec format\n");
-    printf("  -w, --watch               Repeat measurement continuously\n");
-    printf("      --debug               Show debug output\n");
-    printf("  -h, --help                Show this help message\n");
+    printf("  --gpio=N, -g N         GPIO number to measure (relative to chip)\n");
+    printf("  --chip=NAME, -c NAME   GPIO chip (default: gpiochip0)\n");
+    printf("  --duration=SEC, -d SEC Duration to measure (default: 2)\n");
+    printf("  --pulses=N, -p N       Pulses per revolution (default: 2)\n");
+    printf("  --numeric              Output RPM as numeric only\n");
+    printf("  --json                 Output as JSON\n");
+    printf("  --collectd             Output in collectd PUTVAL format\n");
+    printf("  --quiet, -q            Suppress normal messages\n");
+    printf("  --debug                Show debug output\n");
+    printf("  --watch, -w            Repeat measurements continuously\n");
+    printf("  --help, -h             Show this help\n");
+    printf("\n");
+    printf("Note:\n");
+    printf("  The --duration value is internally split into two phases:\n");
+    printf("    • Warmup phase:      duration / 2 (no output)\n");
+    printf("    • Measurement phase: duration / 2 (output shown)\n");
+    printf("  In --watch mode, the warmup is only performed once (before the loop).\n");
+    printf("  Each loop iteration then only uses duration / 2 for measurement.\n\n");
 }

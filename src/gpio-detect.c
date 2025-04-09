@@ -1,90 +1,42 @@
 // gpio-detect.c
-// Auto-detect gpiochip name and base from /sys/class/gpio
+// GPIO chip detection using libgpiod v2 (pure C)
 
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <dirent.h>
-#include <errno.h>
+#include <string.h>
+#include <gpiod.h>
 #include "gpio-fan-rpm.h"
 
-#define SYSFS_GPIO_DIR "/sys/class/gpio"
+#define MAX_CHIPS 32
 
-int read_gpio_base_from_chip(const char *chipname)
+// Try to find the first available chip if none provided
+void detect_chip(config_t *cfg)
 {
-    char path[128];
-    snprintf(path, sizeof(path), SYSFS_GPIO_DIR "/%s/base", chipname);
-    FILE *f = fopen(path, "r");
-    if (!f) return -1;
-    int base = -1;
-    fscanf(f, "%d", &base);
-    fclose(f);
-    return base;
-}
+    if (cfg->default_chip[0] != '\0')
+        return;
 
-int find_first_gpiochip(char *chip_buf, size_t len, int *base_out)
-{
-    DIR *dir = opendir(SYSFS_GPIO_DIR);
-    if (!dir) return -1;
-
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL)
+    for (int i = 0; i < MAX_CHIPS; i++)
     {
-        if (strncmp(entry->d_name, "gpiochip", 8) == 0)
+        char path[64];
+        snprintf(path, sizeof(path), "/dev/gpiochip%d", i);
+
+        struct gpiod_chip *chip = gpiod_chip_open(path);
+        if (!chip)
+            continue;
+
+        // Save the chip name (e.g., "gpiochip0") without "/dev/"
+        const char *name = gpiod_chip_get_path(chip);
+        if (name)
         {
-            int base = read_gpio_base_from_chip(entry->d_name);
-            if (base >= 0)
-            {
-                strncpy(chip_buf, entry->d_name, len - 1);
-                chip_buf[len - 1] = '\0';
-                if (base_out) *base_out = base;
-                closedir(dir);
-                return 0;
-            }
+            const char *basename = strrchr(name, '/');
+            if (basename && strlen(basename + 1) < sizeof(cfg->default_chip))
+                strncpy(cfg->default_chip, basename + 1, sizeof(cfg->default_chip) - 1);
         }
+
+        gpiod_chip_close(chip);
+        return; // stop after finding the first usable chip
     }
 
-    closedir(dir);
-    return -1;
-}
-
-int find_chip_by_base(int base, char *chip_buf, size_t len)
-{
-    DIR *dir = opendir(SYSFS_GPIO_DIR);
-    if (!dir) return -1;
-
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL)
-    {
-        if (strncmp(entry->d_name, "gpiochip", 8) == 0)
-        {
-            int chip_base = read_gpio_base_from_chip(entry->d_name);
-            if (chip_base == base)
-            {
-                strncpy(chip_buf, entry->d_name, len - 1);
-                chip_buf[len - 1] = '\0';
-                closedir(dir);
-                return 0;
-            }
-        }
-    }
-
-    closedir(dir);
-    return -1;
-}
-
-void detect_chip_and_base(config_t *cfg)
-{
-    if (cfg->default_chip[0] == 0 && cfg->default_base <= 0)
-    {
-        find_first_gpiochip(cfg->default_chip, MAX_CHIP_NAME, &cfg->default_base);
-    }
-    else if (cfg->default_chip[0] != 0 && cfg->default_base <= 0)
-    {
-        cfg->default_base = read_gpio_base_from_chip(cfg->default_chip);
-    }
-    else if (cfg->default_chip[0] == 0 && cfg->default_base > 0)
-    {
-        find_chip_by_base(cfg->default_base, cfg->default_chip, MAX_CHIP_NAME);
-    }
+    // fallback if nothing found
+    strncpy(cfg->default_chip, "gpiochip0", sizeof(cfg->default_chip) - 1);
 }

@@ -1,128 +1,83 @@
 // gpio.c
-// GPIO setup, export, and base detection
+// GPIO setup and value reading using libgpiod v2
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <dirent.h>
+#include <gpiod.h>
 #include "gpio-fan-rpm.h"
 
-#define SYSFS_GPIO_DIR "/sys/class/gpio"
-#define MAX_BUF 128
-
-// Read GPIO base from a given chip name
-int read_gpio_base(const char *chip)
+// Read value using libgpiod v2
+int gpio_get_value(gpio_info_t *info)
 {
-    if (!chip || chip[0] == 0)
+    if (!info || info->gpio_rel < 0 || info->chip[0] == 0)
         return -1;
 
-    char path[MAX_BUF];
-    snprintf(path, sizeof(path), SYSFS_GPIO_DIR "/%s/base", chip);
-    FILE *f = fopen(path, "r");
+    char chip_path[128];
 
-    if (!f) {
-        perror("fopen (read_gpio_base)");
-        return -1;
-    }
-
-    int base = -1;
-    fscanf(f, "%d", &base);
-    fclose(f);
-
-    return base;
-}
-
-// Try to find the first gpiochip and return its base and name
-int default_gpio_base(char *chip_buf, size_t len)
-{
-    DIR *dir = opendir(SYSFS_GPIO_DIR);
-    if (!dir) {
-        perror("opendir (default_gpio_base)");
-        return -1;
-    }
-
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL)
-    {
-        if (strncmp(entry->d_name, "gpiochip", 8) == 0)
-        {
-            strncpy(chip_buf, entry->d_name, len);
-            chip_buf[len - 1] = '\0';
-            closedir(dir);
-            return read_gpio_base(entry->d_name);
-        }
-    }
-
-    closedir(dir);
-    fprintf(stderr, "[ERROR] No gpiochip found in %s\n", SYSFS_GPIO_DIR);
-    return -1;
-}
-
-// Export a GPIO (if not already exported)
-int export_gpio(int gpio_abs)
-{
-    char path[MAX_BUF];
-    snprintf(path, sizeof(path), SYSFS_GPIO_DIR "/gpio%d", gpio_abs);
-    if (access(path, F_OK) == 0)
-        return 0;
-
-    int fd = open(SYSFS_GPIO_DIR "/export", O_WRONLY);
-    if (fd < 0) {
-        perror("open (export)");
-        return -1;
-    }
-
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%d", gpio_abs);
-    if (write(fd, buf, strlen(buf)) < 0) {
-        perror("write (export_gpio)");
-        close(fd);
-        return -1;
-    }
-
-    close(fd);
-    usleep(100000);
-    return 0;
-}
-
-// Set GPIO direction and edge detection
-void setup_gpio(int gpio_abs)
-{
-    char path[MAX_BUF];
-    int fd;
-
-    snprintf(path, sizeof(path), SYSFS_GPIO_DIR "/gpio%d/direction", gpio_abs);
-    fd = open(path, O_WRONLY);
-    if (fd >= 0)
-    {
-        if (write(fd, "in", 2) < 0)
-            perror("write (direction)");
-        close(fd);
-    }
+    // Prepend "/dev/" to the chip name if not already included
+    if (strncmp(info->chip, "/dev/", 5) != 0)
+        snprintf(chip_path, sizeof(chip_path), "/dev/%s", info->chip);
     else
-    {
-        perror("open (direction)");
+        snprintf(chip_path, sizeof(chip_path), "%s", info->chip);
+
+    // Open chip by path
+    struct gpiod_chip *chip = gpiod_chip_open(chip_path);
+    if (!chip)
+        return -1;
+
+    // Create line settings for input
+    struct gpiod_line_settings *settings = gpiod_line_settings_new();
+    if (!settings) {
+        gpiod_chip_close(chip);
+        return -1;
+    }
+    gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_INPUT);
+
+    // Configure the line
+    struct gpiod_line_config *line_cfg = gpiod_line_config_new();
+    if (!line_cfg) {
+        gpiod_line_settings_free(settings);
+        gpiod_chip_close(chip);
+        return -1;
     }
 
-    snprintf(path, sizeof(path), SYSFS_GPIO_DIR "/gpio%d/edge", gpio_abs);
-    fd = open(path, O_WRONLY);
-    if (fd >= 0)
-    {
-        if (write(fd, "falling", 7) < 0)
-            perror("write (edge)");
-        close(fd);
+    unsigned int offset = info->gpio_rel;
+    if (gpiod_line_config_add_line_settings(line_cfg, &offset, 1, settings) < 0) {
+        gpiod_line_config_free(line_cfg);
+        gpiod_line_settings_free(settings);
+        gpiod_chip_close(chip);
+        return -1;
     }
-    else
-    {
-        perror("open (edge)");
-    }
-}
 
-int read_gpio(int gpio_abs) {
-    // Simulate GPIO read (replace with actual GPIO read logic)
-    // Return 1 for high signal, 0 for low signal
-    return gpio_get_value(gpio_abs); // Example function call
+    // Request the line
+    struct gpiod_request_config *req_cfg = gpiod_request_config_new();
+    if (!req_cfg) {
+        gpiod_line_config_free(line_cfg);
+        gpiod_line_settings_free(settings);
+        gpiod_chip_close(chip);
+        return -1;
+    }
+
+    gpiod_request_config_set_consumer(req_cfg, "gpio-fan-rpm");
+
+    struct gpiod_line_request *request = gpiod_chip_request_lines(chip, req_cfg, line_cfg);
+
+    gpiod_request_config_free(req_cfg);
+    gpiod_line_config_free(line_cfg);
+    gpiod_line_settings_free(settings);
+
+    if (!request) {
+        gpiod_chip_close(chip);
+        return -1;
+    }
+
+    enum gpiod_line_value value = gpiod_line_request_get_value(request, info->gpio_rel);
+    gpiod_line_request_release(request);
+    gpiod_chip_close(chip);
+
+    if (value == GPIOD_LINE_VALUE_ERROR)
+        return -1;
+
+    return value == GPIOD_LINE_VALUE_ACTIVE ? 1 : 0;
 }

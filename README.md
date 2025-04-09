@@ -1,114 +1,92 @@
 # gpio-fan-rpm
 
-`gpio-fan-rpm` is a lightweight C utility and OpenWRT package that measures fan RPM by counting falling edges on GPIO pins using sysfs and `poll()`. It supports multiple GPIO chips, flexible input formats, and various output modes including JSON and collectd.
+> Modular and well-commented fan RPM measurement utility for OpenWRT (libgpiod v2)
 
-Of course it could be compiled for other systems too, but this is especially for my Banana Pi R4 - OpenWRT setup. I am using this to monitor the fan's i've built in but you can use it for many things.
-
----
-
-## 🔧 Features
-
-- Supports multiple GPIOs from different GPIO chips
-- Flexible GPIO syntax: `--gpio=17:gpiochip1` or anonymous `17:gpiochip1`
-- Measurement via `poll()` on falling edges (no busy-wait)
-- Output formats:
-  - Human-readable (`GPIO 17: 2200 RPM`)
-  - `--numeric` (plain RPM values, one per line)
-  - `--json` (machine-readable)
-  - `--collectd` (compatible with collectd exec plugin)
-- Continuous monitoring via `--watch`
-- Debug mode (`--debug`) with internal state logging
-- Modular and portable C code
-- OpenWRT package-ready with Makefile
+This command-line tool allows you to measure the speed (in RPM) of one or more fans that emit pulse signals on a GPIO pin (e.g. Noctua fans with a tachometer wire).  
+It uses the **libgpiod v2 C API** and supports edge event detection via multithreading for high precision.
 
 ---
 
-## 🚀 Usage
+## Features
+
+- Edge-event-based RPM detection using **libgpiod v2**
+- Multithreaded measurement for multiple GPIOs in parallel
+- Warm-up phase to avoid initial inaccuracies
+- Watch mode for continuous monitoring
+- JSON, numeric, quiet and collectd-compatible output
+- Auto-detection of GPIO chip if not specified
+- Fully written in portable C (no C++ dependencies)
+
+---
+
+## Usage
 
 ```bash
-gpio-fan-rpm [<gpio>[:chip]]... [options]
+gpio-fan-rpm [options]
 ```
 
-### Examples
+### Options
+
+| Option             | Description                               |
+| ------------------ | ----------------------------------------- |
+| `--gpio=N`, `-g N` | GPIO number to measure (relative to chip) |
+| `--chip=NAME`      | GPIO chip name (default: `gpiochip0`)     |
+| `--duration=SEC`   | Total measurement duration (default: `2`) |
+| `--pulses=N`       | Pulses per revolution (default: `2`)      |
+| `--numeric`        | Output RPM values only (one per line)     |
+| `--json`           | Output RPM values as JSON                 |
+| `--collectd`       | Output in collectd PUTVAL format          |
+| `--quiet`, `-q`    | Suppress non-essential output             |
+| `--debug`          | Enable debug output                       |
+| `--watch`, `-w`    | Continuously repeat measurements          |
+| `--help`, `-h`     | Show help message                         |
+
+---
+
+## Timing Behavior
+
+⚠️ **Important timing information**:
+
+- The `--duration` value represents the **total time** used per measurement cycle.
+- Each measurement run is split into two phases:
+  - **Warm-up phase**: `duration / 2` — data collected but discarded (stabilization)
+  - **Actual measurement**: `duration / 2` — data used for output
+- In **watch mode**, the warm-up phase is **only used on the first cycle**.
+  All following loops use only `duration / 2` as the actual measurement time.
+
+---
+
+## Example
 
 ```bash
-gpio-fan-rpm 17 18
-gpio-fan-rpm 10:gpiochip0 12:gpiochip1
-gpio-fan-rpm --gpio=22 --duration=3 --json
-gpio-fan-rpm 11 13 --collectd
+gpio-fan-rpm --gpio=17 --pulses=4 --duration=4
 ```
 
----
-
-## ⚙️ Options
-
-| Option                   | Description |
-|--------------------------|-------------|
-| `-g`, `--gpio <n>`       | Relative GPIO number (can be repeated) |
-| `--gpio=<n>:<chip>`      | GPIO number with specific GPIO chip |
-| `-b`, `--gpio-base <n>`  | Set base GPIO (fallback if chip not used) |
-| `-c`, `--gpiochip <name>`| Set default GPIO chip name |
-| `-d`, `--duration <s>`   | Duration in seconds to measure (default: 2) |
-| `-p`, `--pulses-per-rev` | Pulses per fan revolution (default: 2) |
-| `-n`, `--numeric`        | Output plain RPM numbers (one per line) |
-| `-j`, `--json`           | Output JSON objects |
-| `--collectd`             | Output in collectd exec format |
-| `-w`, `--watch`          | Continuously measure every &lt;duration&gt; seconds |
-| `--debug`                | Enable debug logs |
-| `-h`, `--help`           | Show help message |
+- This performs:
+  - 2 seconds warm-up
+  - 2 seconds actual measurement
+  - then prints the RPM for GPIO 17
 
 ---
 
-## 📦 OpenWRT Integration
+## Dependencies
 
-### Installation via local buildroot
+- [libgpiod v2](https://git.kernel.org/pub/scm/libs/libgpiod/libgpiod.git/) — must be installed and linked at compile time.
+- Build tested on OpenWRT 23+ with `libgpiod 2.1.3`.
 
-1. Copy this package directory to your OpenWRT build tree:
+---
 
-   ```bash
-   cp -r gpio-fan-rpm/ openwrt/package/utils/
-   ```
-
-2. Add it to your build config:
-
-   ```bash
-   make menuconfig
-   # Select Utilities -> gpio-fan-rpm
-   ```
-
-3. Build and install:
-
-   ```bash
-   make package/gpio-fan-rpm/compile V=s
-   ```
-
-### Manual compilation (for testing)
+## Build
 
 ```bash
 make
-scp gpio-fan-rpm root@<router-ip>:/usr/sbin/
 ```
 
----
-
-## 📡 collectd Integration
-
-Example for `collectd.conf`:
-
-```conf
-<Plugin exec>
-  Exec "nobody" "/usr/sbin/gpio-fan-rpm" "17" "--collectd"
-</Plugin>
-```
+This will generate the `gpio-fan-rpm` binary.
 
 ---
 
-## 📄 License
+## License
 
-MIT License
-
----
-
-## 👤 Maintainer
-
-Open Source Community – feel free to contribute!
+MIT License.  
+Developed by the Open Source Community.

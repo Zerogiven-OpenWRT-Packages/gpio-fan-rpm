@@ -3,14 +3,14 @@
 # Compiler and flags
 CC ?= gcc
 CFLAGS ?= -O2
-LDFLAGS ?=
-LIB ?=
+# LIB ?= -ljson-c -lgpiod
+LIB ?= -lgpiod -ljson-c
 
 # Target executable name
 TARGET = gpio-fan-rpm
 
 # Source files (modular)
-SRCS = gpio-fan-rpm.c args.c gpio.c measure.c gpio-detect.c
+SRCS = gpio-fan-rpm.c args.c gpio.c measure.c gpio-detect.c measure_rpm_edge.c
 
 # Object files
 OBJS = $(SRCS:.c=.o)
