@@ -39,12 +39,12 @@ extern "C"
         int numeric_output;  // --numeric
         int json_output;     // --json
         int collectd_output; // --collectd
-        int output_quiet;    // --quiet
 
         // Behavior options
-        int debug;      // --debug
-        int watch_mode; // --watch
-        int show_help;  // --help
+        int debug;         // --debug
+        int watch_mode;    // --watch
+        int show_help;     // --help
+        int show_version;  // --version
 
         // Default chip fallback (used if not specified per-GPIO)
         char default_chip[MAX_CHIP_NAME];
@@ -66,9 +66,10 @@ extern "C"
     // Argument parsing
     config_t parse_arguments(int argc, char *argv[]);
     void print_help(const char *prog);
+    void print_version(const char *prog);
 
     // Measurement core
-    void perform_measurements(config_t *config);
+    void perform_measurements(config_t *config, int skip_output);
 
     // RPM measurement via polling (legacy fallback)
     int gpio_get_value(gpio_info_t *info);

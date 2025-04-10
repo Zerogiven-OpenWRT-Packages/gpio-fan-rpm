@@ -13,7 +13,7 @@ It uses the **libgpiod v2 C API** and supports edge event detection via multithr
 - Multithreaded measurement for multiple GPIOs in parallel
 - Warm-up phase to avoid initial inaccuracies
 - Watch mode for continuous monitoring
-- JSON, numeric, quiet and collectd-compatible output
+- JSON, numeric and collectd-compatible output
 - Auto-detection of GPIO chip if not specified
 - Fully written in portable C (no C++ dependencies)
 
@@ -36,7 +36,6 @@ gpio-fan-rpm [options]
 | `--numeric`        | Output RPM values only (one per line)     |
 | `--json`           | Output RPM values as JSON                 |
 | `--collectd`       | Output in collectd PUTVAL format          |
-| `--quiet`, `-q`    | Suppress non-essential output             |
 | `--debug`          | Enable debug output                       |
 | `--watch`, `-w`    | Continuously repeat measurements          |
 | `--help`, `-h`     | Show help message                         |

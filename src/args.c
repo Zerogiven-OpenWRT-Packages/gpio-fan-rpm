@@ -6,6 +6,25 @@
 #include <string.h>
 #include "gpio-fan-rpm.h"
 
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+
+#ifndef PKG_TAG
+#define PKG_TAG "0.0.0-r0"
+#endif
+
+#ifndef PKG_MAINTAINER
+#define PKG_MAINTAINER "?"
+#endif
+
+#ifndef PKG_LICENSE
+#define PKG_LICENSE "?"
+#endif
+
+#ifndef PKG_COPYRIGHT_YEAR
+#define PKG_COPYRIGHT_YEAR "2025"
+#endif
+
 // Sanitize chip name by stripping /dev/ prefix if present
 void sanitize_chip_name(char *chip_name)
 {
@@ -105,10 +124,6 @@ config_t parse_arguments(int argc, char *argv[])
         {
             cfg.collectd_output = 1;
         }
-        else if (is_option(arg, "--quiet", "-q"))
-        {
-            cfg.output_quiet = 1;
-        }
         else if (is_option(arg, "--debug", ""))
         {
             cfg.debug = 1;
@@ -120,6 +135,10 @@ config_t parse_arguments(int argc, char *argv[])
         else if (is_option(arg, "--help", "-h"))
         {
             cfg.show_help = 1;
+        }
+        else if (is_option(arg, "--version", "-v"))
+        {
+            cfg.show_version = 1;
         }
         else
         {
@@ -169,10 +188,10 @@ void print_help(const char *prog)
     printf("  --numeric              Output RPM as numeric only\n");
     printf("  --json                 Output as JSON\n");
     printf("  --collectd             Output in collectd PUTVAL format\n");
-    printf("  --quiet, -q            Suppress normal messages\n");
     printf("  --debug                Show debug output\n");
     printf("  --watch, -w            Repeat measurements continuously\n");
     printf("  --help, -h             Show this help\n");
+    printf("  --version, -v          Show version information\n");
     printf("\n");
     printf("Note:\n");
     printf("  The --duration value is internally split into two phases:\n");
@@ -180,4 +199,11 @@ void print_help(const char *prog)
     printf("    • Measurement phase: duration / 2 (output shown)\n");
     printf("  In --watch mode, the warmup is only performed once (before the loop).\n");
     printf("  Each loop iteration then only uses duration / 2 for measurement.\n\n");
+}
+
+void print_version(const char *prog)
+{
+    printf("%s version %s\n", prog, PKG_TAG);
+    printf("Copyright (C) %s %s\n", PKG_COPYRIGHT_YEAR, PKG_MAINTAINER);
+    printf("License: %s\n", PKG_LICENSE);
 }

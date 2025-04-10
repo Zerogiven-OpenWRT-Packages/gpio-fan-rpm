@@ -10,7 +10,7 @@
 #include "gpio-fan-rpm.h"
 
 // Perform measurements and optionally print output
-void perform_measurements(config_t *cfg)
+void perform_measurements(config_t *cfg, int skip_output)
 {
     if (cfg->debug)
     {
@@ -39,6 +39,9 @@ void perform_measurements(config_t *cfg)
         fprintf(stderr, "Error: failed to measure RPM using edge events\n");
         return;
     }
+
+    if (skip_output)
+        return;
 
     if (cfg->json_output)
     {

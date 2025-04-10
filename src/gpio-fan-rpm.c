@@ -17,6 +17,12 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    if (config.show_version)
+    {
+        print_version(argv[0]);
+        return 0;
+    }
+
     if (config.gpio_count == 0)
     {
         fprintf(stderr, "Error: At least one GPIO is required.\n\n");
@@ -37,6 +43,7 @@ int main(int argc, char *argv[])
         }
     }
 
+    // GPIO Setup vervollständigen
     for (int i = 0; i < config.gpio_count; i++)
     {
         if (config.gpios[i].pulses_per_rev <= 0)
@@ -54,10 +61,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (!config.output_quiet &&
-        !config.numeric_output &&
-        !config.json_output &&
-        !config.collectd_output)
+    if (!config.numeric_output && !config.json_output && !config.collectd_output)
     {
         printf("gpio-fan-rpm start measuring (chip: %s)\n", config.default_chip);
         printf("Measuring for %d second(s)...\n", warmup_time + measure_time);
@@ -65,9 +69,10 @@ int main(int argc, char *argv[])
 
     // Warmup
     config.duration = warmup_time;
-    perform_measurements(&config);
+    perform_measurements(&config, 1);
     sleep(warmup_time);
 
+    // Messung vorbereiten
     config.duration = measure_time;
 
     if (config.watch_mode)
@@ -77,7 +82,6 @@ int main(int argc, char *argv[])
         while (1)
         {
             if (!first_loop &&
-                !config.output_quiet &&
                 !config.numeric_output &&
                 !config.json_output &&
                 !config.collectd_output)
@@ -85,12 +89,9 @@ int main(int argc, char *argv[])
                 printf("Measuring for %d second(s)...\n", config.duration);
             }
 
-            perform_measurements(&config);
+            perform_measurements(&config, /* skip_output */ 0);
 
-            if (!config.output_quiet &&
-                !config.numeric_output &&
-                !config.json_output &&
-                !config.collectd_output)
+            if (!config.numeric_output && !config.json_output && !config.collectd_output)
             {
                 printf("---\n");
             }
@@ -101,7 +102,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        perform_measurements(&config);
+        perform_measurements(&config, 0);
     }
 
     return 0;
