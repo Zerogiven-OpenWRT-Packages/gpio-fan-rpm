@@ -1,15 +1,15 @@
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=gpio-fan-rpm
-PKG_VERSION:=1.0.0
-PKG_RELEASE:=1
+PKG_NAME    := gpio-fan-rpm
+PKG_VERSION := 1.0.0
+PKG_RELEASE := 1
 
-PKG_MAINTAINER:=YourName
-PKG_LICENSE:=MIT
+PKG_MAINTAINER     := CSoellinger
+PKG_LICENSE        := GPL
 PKG_COPYRIGHT_YEAR := $(shell date +%Y)
 
-PKG_BUILD_DEPENDS:=libgpiod libjson-c
-PKG_FIXUP:=autoreconf
+PKG_BUILD_DEPENDS := libgpiod libjson-c
+PKG_FIXUP         := autoreconf
 
 include $(INCLUDE_DIR)/package.mk
 include release.mk
@@ -19,6 +19,7 @@ define Package/$(PKG_NAME)
   CATEGORY:=Utilities
   TITLE:=GPIO Fan RPM Monitor
   DEPENDS:=+libgpiod +libjson-c +libpthread
+  PKGARCH:=all
 endef
 
 define Package/$(PKG_NAME)/description
