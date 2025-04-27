@@ -1,21 +1,22 @@
 # gpio-fan-rpm
 
-> Modular and well-commented fan RPM measurement utility for OpenWRT (libgpiod v2)
+> Modular and well-commented fan RPM measurement utility for OpenWRT (libgpiod v1/v2 compatible)
 
 This command-line tool allows you to measure the speed (in RPM) of one or more fans that emit pulse signals on a GPIO pin (e.g. Noctua fans with a tachometer wire).  
-It uses the **libgpiod v2 C API** and supports edge event detection via multithreading for high precision.
+It supports both **libgpiod v1** and **libgpiod v2** APIs and offers edge event detection via multithreading for high precision.
 
 ---
 
 ## Features
 
-- Edge-event-based RPM detection using **libgpiod v2**
+- Edge-event-based RPM detection using **libgpiod** (v1 or v2)
 - Multithreaded measurement for multiple GPIOs in parallel
 - Warm-up phase to avoid initial inaccuracies
 - Watch mode for continuous monitoring
 - JSON, numeric and collectd-compatible output
 - Auto-detection of GPIO chip if not specified
 - Fully written in portable C (no C++ dependencies)
+- Compatible with OpenWRT 23.05+ and 24.10+
 
 ---
 
@@ -70,7 +71,7 @@ gpio-fan-rpm --gpio=17 --pulses=4 --duration=4
 
 ## Dependencies
 
-- [libgpiod v2](https://git.kernel.org/pub/scm/libs/libgpiod/libgpiod.git/) — must be installed and linked at compile time.
+- [libgpiod v1 or v2](https://git.kernel.org/pub/scm/libs/libgpiod/libgpiod.git/) — must be installed and linked at compile time.
 - Build tested on OpenWRT 23+ with `libgpiod 2.1.3`.
 
 ---
@@ -87,5 +88,6 @@ This will generate the `gpio-fan-rpm` binary.
 
 ## License
 
-MIT License.  
+GPL License.  
+Copyright © 2025 CSoellinger.  
 Developed by the Open Source Community.

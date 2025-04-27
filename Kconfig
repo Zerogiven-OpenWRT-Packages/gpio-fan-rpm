@@ -1,0 +1,19 @@
+menu "Utilities"
+
+config PACKAGE_gpio-fan-rpm
+    bool "GPIO Fan RPM Monitor (gpio-fan-rpm)"
+    depends on LIBGPIOD && LIBJSON_C
+    help
+      gpio-fan-rpm measures fan speed (RPM) by counting GPIO edge events.
+      It supports both libgpiod v1 and v2 APIs with automatic detection,
+      providing compatibility across different OpenWRT versions (23.05+, 24.10+).
+      
+      Features:
+        - Edge-event-based RPM detection using libgpiod
+        - Multithreaded measurement for multiple GPIOs in parallel
+        - Warm-up phase to avoid initial inaccuracies
+        - Watch mode for continuous monitoring
+        - JSON, numeric and collectd-compatible output
+        - Auto-detection of GPIO chip if not specified
+
+endmenu

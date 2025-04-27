@@ -1,7 +1,8 @@
 // gpio-fan-rpm.c
 // Modular and well-commented fan RPM measurement utility for OpenWRT
-// Author: Open Source Community
-// License: MIT
+// Author: CSoellinger
+// License: GPL
+// Copyright © 2025 CSoellinger
 
 #include <stdio.h>
 #include <unistd.h>
