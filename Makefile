@@ -28,10 +28,10 @@ endef
 
 # Enable pthread and link required libraries
 TARGET_CFLAGS += -Wall -Wextra -pthread $(FPIC) \
-  -DPKG_TAG=\"$(PKG_VERSION)-r$(PKG_RELEASE)\" \
-  -DPKG_MAINTAINER=\"$(PKG_MAINTAINER)\" \
-  -DPKG_LICENSE=\"$(PKG_LICENSE)\" \
-  -DPKG_COPYRIGHT_YEAR=\"$(PKG_COPYRIGHT_YEAR)\"
+  -DPKG_TAG='"$(PKG_VERSION)-r$(PKG_RELEASE)"' \
+  -DPKG_MAINTAINER='"$(PKG_MAINTAINER)"' \
+  -DPKG_LICENSE='"$(PKG_LICENSE)"' \
+  -DPKG_COPYRIGHT_YEAR='"$(PKG_COPYRIGHT_YEAR)"'
 TARGET_LDFLAGS += -pthread
 TARGET_LIBS := -ljson-c -lgpiod
 
