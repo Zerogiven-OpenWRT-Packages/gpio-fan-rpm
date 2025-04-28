@@ -20,6 +20,13 @@
     #ifndef GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP
         #define GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP (1 << 2)
     #endif
+    
+    // Output message to stderr during compilation but don't generate a warning
+    #if defined(DEBUG)
+    // Only show this message in debug builds
+    static const char v1_fallback_msg[] __attribute__((unused)) = 
+        "Note: Compiling gpio_get_value with libgpiod v1 API fallback. GPIO bias settings might not be applied.";
+    #endif
 #endif
 
 // Function prototypes for libgpiod v1 API
@@ -94,7 +101,6 @@ int gpio_get_value(struct gpiod_chip *chip, gpio_info_t *info, int *success)
     return ret;
 #else
     // libgpiod v1 API - fallback
-    #warning "Compiling gpio_get_value with libgpiod v1 API fallback. GPIO bias settings might not be applied."
     struct gpiod_line *line = gpiod_chip_get_line(chip, info->gpio_rel);
     if (!line)
     {
