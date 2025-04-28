@@ -5,117 +5,175 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h> // Include errno for error reporting
-#include <gpiod.h> // Must be included before checking GPIOD_API_VERSION
+#include <unistd.h>
+#include <gpiod.h>
 #include "gpio-fan-rpm.h"
 
-// Read value using libgpiod v2 or v1
-int gpio_get_value(gpio_info_t *info)
-{
-    if (!info || info->gpio_rel < 0 || info->chip[0] == 0)
-        return -1;
-
-    char chip_path[128];
-
-    // Prepend "/dev/" to the chip name if not already included
-    if (strncmp(info->chip, "/dev/", 5) != 0)
-        snprintf(chip_path, sizeof(chip_path), "/dev/%s", info->chip);
-    else
-        snprintf(chip_path, sizeof(chip_path), "%s", info->chip);
-
-    // Open chip by path
-    struct gpiod_chip *chip = gpiod_chip_open(chip_path);
-    if (!chip) {
-        fprintf(stderr, "[ERROR] Failed to open chip %s: %s\n", chip_path, strerror(errno));
-        return -1;
-    }
-
-    int value = -1; // Default to error
-
-#ifdef GPIOD_API_VERSION
-    // --- libgpiod v2 Implementation ---
-    struct gpiod_line_settings *settings = gpiod_line_settings_new();
-    struct gpiod_line_config *line_cfg = gpiod_line_config_new();
-    struct gpiod_request_config *req_cfg = gpiod_request_config_new();
-    struct gpiod_line_request *request = NULL;
-
-    if (!settings || !line_cfg || !req_cfg) {
-        fprintf(stderr, "[ERROR-v2] Failed to allocate settings for gpio_get_value\n");
-        goto cleanup_v2;
-    }
-
-    gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_INPUT);
-    // Bias setting might be useful here too, add if needed:
-    // gpiod_line_settings_set_bias(settings, GPIOD_LINE_BIAS_PULL_UP);
-
-    unsigned int offset = info->gpio_rel;
-    if (gpiod_line_config_add_line_settings(line_cfg, &offset, 1, settings) < 0) {
-        fprintf(stderr, "[ERROR-v2] Failed to add line settings for gpio_get_value\n");
-        goto cleanup_v2;
-    }
-
-    gpiod_request_config_set_consumer(req_cfg, "gpio-fan-rpm-read");
-
-    request = gpiod_chip_request_lines(chip, req_cfg, line_cfg);
-    if (!request) {
-        fprintf(stderr, "[ERROR-v2] Failed to request line %d on %s for gpio_get_value: %s\n", info->gpio_rel, chip_path, strerror(errno));
-        goto cleanup_v2;
-    }
-
-    // In v2, getting a single value from a multi-line request requires the offset.
-    // gpiod_line_request_get_value is deprecated. Use gpiod_line_request_get_value_by_offset.
-    // Since we request only one line, offset 0 within the request corresponds to info->gpio_rel.
-    enum gpiod_line_value val_enum = gpiod_line_request_get_value_by_offset(request, 0);
-
-    if (val_enum == GPIOD_LINE_VALUE_ERROR) {
-         fprintf(stderr, "[ERROR-v2] Failed to get value for line %d on %s: %s\n", info->gpio_rel, chip_path, strerror(errno));
-         value = -1;
-    } else {
-        value = (val_enum == GPIOD_LINE_VALUE_ACTIVE) ? 1 : 0;
-    }
-
-cleanup_v2:
-    if (request) gpiod_line_request_release(request);
-    if (req_cfg) gpiod_request_config_free(req_cfg);
-    if (line_cfg) gpiod_line_config_free(line_cfg);
-    if (settings) gpiod_line_settings_free(settings);
-
+// Detect libgpiod version
+#if defined(GPIOD_VERSION_STR)
+    // libgpiod v2
+    #define LIBGPIOD_V2
 #else
-    // --- libgpiod v1 Implementation ---
+    // libgpiod v1
+    #define LIBGPIOD_V1
+    // Define constants for v1 that might be missing
+    #ifndef GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP
+        #define GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP (1 << 2)
+    #endif
+#endif
+
+// Open GPIO chip
+struct gpiod_chip *gpio_open_chip(const char *chip_name)
+{
+    struct gpiod_chip *chip = gpiod_chip_open_by_name(chip_name);
+    if (!chip)
+    {
+        fprintf(stderr, "Error: Unable to open GPIO chip '%s'\n", chip_name);
+    }
+    return chip;
+}
+
+// Close GPIO chip
+void gpio_close_chip(struct gpiod_chip *chip)
+{
+    if (chip)
+        gpiod_chip_close(chip);
+}
+
+// Get GPIO value (single read)
+int gpio_get_value(struct gpiod_chip *chip, gpio_info_t *info, int *success)
+{
+    if (!chip)
+    {
+        if (success)
+            *success = 0;
+        return -1;
+    }
+
+#ifdef LIBGPIOD_V2
+    // libgpiod v2 API
+    struct gpiod_line_request_config config = {
+        .consumer = "gpio-fan-rpm-read",
+        .request_type = GPIOD_LINE_REQUEST_DIRECTION_INPUT,
+        .flags = GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP,
+    };
+    
+    struct gpiod_line_request *request = NULL;
+    unsigned int offset = info->gpio_rel;
+    int ret = -1;
+    
+    request = gpiod_chip_request_lines(chip, &config, &offset, 1);
+    if (!request) {
+        // Try without pull-up if it failed
+        config.flags = 0;
+        request = gpiod_chip_request_lines(chip, &config, &offset, 1);
+        if (!request) {
+            if (success) *success = 0;
+            return -1;
+        }
+    }
+    
+    // Read the value
+    ret = gpiod_line_request_get_value(request, 0);
+    
+    // Release the line
+    gpiod_line_request_release(request);
+    
+    if (success) *success = 1;
+    return ret;
+#else
+    // libgpiod v1 API - fallback
     #warning "Compiling gpio_get_value with libgpiod v1 API fallback. GPIO bias settings might not be applied."
     struct gpiod_line *line = gpiod_chip_get_line(chip, info->gpio_rel);
-    if (!line) {
-        fprintf(stderr, "[ERROR-v1] Failed to get line %d on %s for gpio_get_value: %s\n", info->gpio_rel, chip_path, strerror(errno));
-        goto cleanup_v1;
+    if (!line)
+    {
+        fprintf(stderr, "Error: Unable to get GPIO line %d from chip\n", info->gpio_rel);
+        if (success)
+            *success = 0;
+        return -1;
     }
 
-    // Request the line as input
-    // Note: v1 bias setting via flags is less flexible than v2 settings.
+    // Try to request with pull-up bias (might fail on older systems)
     if (gpiod_line_request_input_flags(line, "gpio-fan-rpm-read", GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP) < 0) {
-        // Fallback to simple input request if pull-up fails or isn't supported
+        // Fall back to no pull-up if not supported
         if (gpiod_line_request_input(line, "gpio-fan-rpm-read") < 0) {
-             fprintf(stderr, "[ERROR-v1] Failed to request line %d on %s as input: %s\n", info->gpio_rel, chip_path, strerror(errno));
-             // No need to release if request failed
-             line = NULL; // Mark line as invalid for cleanup check
-             goto cleanup_v1;
+            fprintf(stderr, "Error: Unable to request GPIO line %d for input\n", info->gpio_rel);
+            gpiod_line_release(line);
+            if (success)
+                *success = 0;
+            return -1;
         }
     }
 
     int val_int = gpiod_line_get_value(line);
-    if (val_int < 0) {
-        fprintf(stderr, "[ERROR-v1] Failed to get value for line %d on %s: %s\n", info->gpio_rel, chip_path, strerror(errno));
-        value = -1;
-    } else {
-        value = val_int; // v1 returns 0 or 1 directly
+    if (val_int < 0)
+    {
+        fprintf(stderr, "Error: Unable to read value from GPIO line %d\n", info->gpio_rel);
+        if (success)
+            *success = 0;
+    }
+    else if (success)
+    {
+        *success = 1;
     }
 
-// Cleanup label for v1 path
-cleanup_v1:
     if (line) gpiod_line_release(line); // Release line only if it was successfully acquired/requested
 
-#endif // GPIOD_API_VERSION check
+    return val_int;
+#endif
+}
 
-    // Common cleanup for both versions
-    if (chip) gpiod_chip_close(chip);
+// Read GPIO pin transitions (pulses) over a period of time
+pulse_count_t gpio_read_pulses(struct gpiod_chip *chip, gpio_info_t *info, int duration_ms)
+{
+    pulse_count_t result = {0};
+    int val, prev_val = -1, success;
+    struct timespec start_time, current_time;
+    long elapsed_ms;
 
-    return value;
+    if (!chip)
+    {
+        return result;
+    }
+
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
+    current_time = start_time;
+
+    while (1)
+    {
+        // Calculate elapsed time
+        elapsed_ms = (current_time.tv_sec - start_time.tv_sec) * 1000 +
+                     (current_time.tv_nsec - start_time.tv_nsec) / 1000000;
+
+        if (elapsed_ms >= duration_ms)
+            break;
+
+        val = gpio_get_value(chip, info, &success);
+        if (!success)
+        {
+            result.error = 1;
+            return result;
+        }
+
+        // If first read or value changed, count transitions
+        if (prev_val != -1 && val != prev_val)
+        {
+            result.count++;
+            
+            // Count only rising edges (0->1) if we're just counting pulses
+            // This avoids double-counting transitions
+            if (val == 1)
+                result.rising_edges++;
+        }
+
+        prev_val = val;
+        
+        // Small delay to avoid excessive CPU usage
+        usleep(100);  // 0.1ms sleep
+
+        clock_gettime(CLOCK_MONOTONIC, &current_time);
+    }
+
+    result.duration_ms = elapsed_ms;
+    return result;
 }
