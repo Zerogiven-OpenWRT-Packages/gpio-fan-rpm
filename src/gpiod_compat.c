@@ -71,6 +71,10 @@
     #if !defined(HAVE_GPIOD_CHIP_GET_LINE)
     struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int offset)
     {
+        // Suppress unused parameter warnings
+        (void)chip;
+        (void)offset;
+        
         // Real implementation for v1 API
         // This is actually provided by the libgpiod v1, so this shouldn't be needed
         // But in case it's missing or renamed, we provide a fallback
@@ -85,6 +89,11 @@
     #if !defined(HAVE_GPIOD_LINE_REQUEST_INPUT_FLAGS)
     int gpiod_line_request_input_flags(struct gpiod_line *line, const char *consumer, int flags)
     {
+        // Suppress unused parameter warnings
+        (void)line;
+        (void)consumer;
+        (void)flags;
+        
         fprintf(stderr, "Warning: Using compatibility function for gpiod_line_request_input_flags\n");
         errno = ENOSYS;
         return -1;
@@ -94,6 +103,10 @@
     #if !defined(HAVE_GPIOD_LINE_REQUEST_INPUT)
     int gpiod_line_request_input(struct gpiod_line *line, const char *consumer)
     {
+        // Suppress unused parameter warnings
+        (void)line;
+        (void)consumer;
+        
         fprintf(stderr, "Warning: Using compatibility function for gpiod_line_request_input\n");
         errno = ENOSYS;
         return -1;
@@ -103,6 +116,10 @@
     #if !defined(HAVE_GPIOD_LINE_REQUEST_BOTH_EDGES_EVENTS)
     int gpiod_line_request_both_edges_events(struct gpiod_line *line, const char *consumer)
     {
+        // Suppress unused parameter warnings
+        (void)line;
+        (void)consumer;
+        
         fprintf(stderr, "Warning: Using compatibility function for gpiod_line_request_both_edges_events\n");
         errno = ENOSYS;
         return -1;
@@ -112,6 +129,10 @@
     #if !defined(HAVE_GPIOD_LINE_REQUEST_FALLING_EDGE_EVENTS)
     int gpiod_line_request_falling_edge_events(struct gpiod_line *line, const char *consumer)
     {
+        // Suppress unused parameter warnings
+        (void)line;
+        (void)consumer;
+        
         fprintf(stderr, "Warning: Using compatibility function for gpiod_line_request_falling_edge_events\n");
         errno = ENOSYS;
         return -1;
@@ -121,6 +142,9 @@
     #if !defined(HAVE_GPIOD_LINE_EVENT_GET_FD)
     int gpiod_line_event_get_fd(struct gpiod_line *line)
     {
+        // Suppress unused parameter warnings
+        (void)line;
+        
         fprintf(stderr, "Warning: Using compatibility function for gpiod_line_event_get_fd\n");
         errno = ENOSYS;
         return -1;
@@ -130,6 +154,9 @@
     #if !defined(HAVE_GPIOD_LINE_GET_VALUE)
     int gpiod_line_get_value(struct gpiod_line *line)
     {
+        // Suppress unused parameter warnings
+        (void)line;
+        
         fprintf(stderr, "Warning: Using compatibility function for gpiod_line_get_value\n");
         errno = ENOSYS;
         return -1;
@@ -139,6 +166,9 @@
     #if !defined(HAVE_GPIOD_LINE_RELEASE)
     void gpiod_line_release(struct gpiod_line *line)
     {
+        // Suppress unused parameter warnings
+        (void)line;
+        
         fprintf(stderr, "Warning: Using compatibility function for gpiod_line_release\n");
         // No implementation needed
     }
@@ -147,6 +177,10 @@
     #if !defined(HAVE_GPIOD_LINE_EVENT_READ)
     int gpiod_line_event_read(struct gpiod_line *line, struct gpiod_line_event *event)
     {
+        // Suppress unused parameter warnings
+        (void)line;
+        (void)event;
+        
         fprintf(stderr, "Warning: Using compatibility function for gpiod_line_event_read\n");
         errno = ENOSYS;
         return -1;
