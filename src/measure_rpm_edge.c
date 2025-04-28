@@ -167,6 +167,23 @@ cleanup_v2:
 
 #warning "Compiling with libgpiod v1 API fallback. GPIO bias settings might not be applied."
 
+// Define missing v1 API prototypes and structures
+struct gpiod_chip *gpiod_chip_open(const char *path);
+void gpiod_chip_close(struct gpiod_chip *chip);
+struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int offset);
+int gpiod_line_request_both_edges_events(struct gpiod_line *line, const char *consumer);
+int gpiod_line_request_falling_edge_events(struct gpiod_line *line, const char *consumer);
+int gpiod_line_event_get_fd(struct gpiod_line *line);
+void gpiod_line_release(struct gpiod_line *line);
+
+// Define the missing gpiod_line_event structure for v1 API
+struct gpiod_line_event {
+    struct timespec ts;
+    int event_type;
+};
+
+int gpiod_line_event_read(struct gpiod_line *line, struct gpiod_line_event *event);
+
 static void *edge_measure_thread_v1(void *arg) {
     edge_thread_args_t *args = (edge_thread_args_t *)arg;
     gpio_info_t *info = args->info;
