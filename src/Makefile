@@ -10,7 +10,7 @@ LIB = -lgpiod -ljson-c -lpthread
 TARGET = gpio-fan-rpm
 
 # Source files (modular)
-SRCS = gpio-fan-rpm.c args.c gpio.c measure.c gpio-detect.c measure_rpm_edge.c
+SRCS = gpio-fan-rpm.c args.c gpio.c measure.c gpio-detect.c measure_rpm_edge.c gpiod_compat.c
 
 # Object files
 OBJS = $(SRCS:.c=.o)

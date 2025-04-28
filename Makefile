@@ -33,15 +33,16 @@ TARGET_CFLAGS += -Wall -Wextra -pthread $(FPIC) \
   -DPKG_MAINTAINER=\"$(PKG_MAINTAINER)\" \
   -DPKG_LICENSE=\"$(PKG_LICENSE)\" \
   -DPKG_COPYRIGHT_YEAR=\"$(PKG_COPYRIGHT_YEAR)\"
-TARGET_LDFLAGS += -pthread
-TARGET_LIBS := -lgpiod -ljson-c -lpthread
 
+TARGET_LDFLAGS += -pthread 
+
+# Pass library search paths explicitly using standard OpenWRT variables
 define Build/Compile
 	$(MAKE) -C $(PKG_BUILD_DIR) \
 		CC="$(TARGET_CC)" \
-		CFLAGS="$(TARGET_CFLAGS)" \
-		LDFLAGS="$(TARGET_LDFLAGS)" \
-		LIB="$(TARGET_LIBS)"
+		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include" \
+		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib" \
+		LIB="-lgpiod -ljson-c -lpthread"
 endef
 
 define Package/$(PKG_NAME)/install
