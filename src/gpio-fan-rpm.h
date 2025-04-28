@@ -30,8 +30,11 @@ extern "C"
     // GPIO pin information
     typedef struct
     {
-        char *chip_name;        // GPIO chip name (e.g., "gpiochip0")
-        unsigned int gpio_rel;  // GPIO line number relative to the chip
+        char chip[MAX_CHIP_NAME];  // GPIO chip name (e.g., "gpiochip0")
+        unsigned int gpio_rel;     // GPIO line number relative to the chip
+        int pulses_per_rev;        // Pulses per revolution for this GPIO
+        int rpm;                   // Measured RPM value
+        int valid;                 // Flag to indicate valid measurement
     } gpio_info_t;
 
     // Global configuration for the application
