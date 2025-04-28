@@ -10,15 +10,15 @@
 #define TOSTRING(x) STRINGIFY(x)
 
 #ifndef PKG_TAG
-#define PKG_TAG "0.0.0-r0"
+#define PKG_TAG "0.0.0-dev"
 #endif
 
 #ifndef PKG_MAINTAINER
-#define PKG_MAINTAINER "?"
+#define PKG_MAINTAINER "Unknown"
 #endif
 
 #ifndef PKG_LICENSE
-#define PKG_LICENSE "?"
+#define PKG_LICENSE "Proprietary"
 #endif
 
 #ifndef PKG_COPYRIGHT_YEAR
