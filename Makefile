@@ -8,7 +8,7 @@ PKG_MAINTAINER     := CSoellinger
 PKG_LICENSE        := GPL
 PKG_COPYRIGHT_YEAR := $(shell date +%Y)
 
-PKG_BUILD_DEPENDS := libgpiod libjson-c libpthread
+PKG_BUILD_DEPENDS := libgpiod libjson-c
 
 include $(INCLUDE_DIR)/package.mk
 
