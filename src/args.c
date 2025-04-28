@@ -6,23 +6,25 @@
 #include <string.h>
 #include "gpio-fan-rpm.h"
 
-#define STRINGIFY(x) #x
-#define TOSTRING(x) STRINGIFY(x)
+// Stringification macros to safely handle version information
+#define XSTR(s) STR(s)
+#define STR(s) #s
 
+// Define default values if not provided by build system
 #ifndef PKG_TAG
-#define PKG_TAG "0.0.0-dev"
+#define PKG_TAG dev_build
 #endif
 
 #ifndef PKG_MAINTAINER
-#define PKG_MAINTAINER "Unknown"
+#define PKG_MAINTAINER unknown
 #endif
 
 #ifndef PKG_LICENSE
-#define PKG_LICENSE "Proprietary"
+#define PKG_LICENSE proprietary
 #endif
 
 #ifndef PKG_COPYRIGHT_YEAR
-#define PKG_COPYRIGHT_YEAR "2025"
+#define PKG_COPYRIGHT_YEAR 2025
 #endif
 
 // Sanitize chip name by stripping /dev/ prefix if present
@@ -203,7 +205,7 @@ void print_help(const char *prog)
 
 void print_version(const char *prog)
 {
-    printf("%s version %s\n", prog, PKG_TAG);
-    printf("Copyright (C) %s %s\n", PKG_COPYRIGHT_YEAR, PKG_MAINTAINER);
-    printf("License: %s\n", PKG_LICENSE);
+    printf("%s version %s\n", prog, XSTR(PKG_TAG));
+    printf("Copyright (C) %s %s\n", XSTR(PKG_COPYRIGHT_YEAR), XSTR(PKG_MAINTAINER));
+    printf("License: %s\n", XSTR(PKG_LICENSE));
 }
