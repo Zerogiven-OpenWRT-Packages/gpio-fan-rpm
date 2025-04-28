@@ -22,6 +22,17 @@
     #endif
 #endif
 
+// Function prototypes for libgpiod v1 API
+#ifdef LIBGPIOD_V1
+struct gpiod_chip *gpiod_chip_open_by_name(const char *name);
+void gpiod_chip_close(struct gpiod_chip *chip);
+struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int offset);
+int gpiod_line_request_input(struct gpiod_line *line, const char *consumer);
+int gpiod_line_request_input_flags(struct gpiod_line *line, const char *consumer, int flags);
+int gpiod_line_get_value(struct gpiod_line *line);
+void gpiod_line_release(struct gpiod_line *line);
+#endif
+
 // Open GPIO chip
 struct gpiod_chip *gpio_open_chip(const char *chip_name)
 {

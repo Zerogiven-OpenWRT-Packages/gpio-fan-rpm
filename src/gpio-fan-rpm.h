@@ -6,6 +6,9 @@
 
 #include <stddef.h>
 #include <pthread.h>
+#include <stdint.h>
+#include <time.h>
+#include <gpiod.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -15,14 +18,20 @@ extern "C"
 #define MAX_GPIOS 32
 #define MAX_CHIP_NAME 64
 
-    // Structure for each GPIO pin to monitor
+    // Structure to hold pulse counting results
     typedef struct
     {
-        int gpio_rel;             // Relative GPIO number (offset on chip)
-        char chip[MAX_CHIP_NAME]; // Associated gpiochip name (e.g. "gpiochip0")
-        int rpm;                  // Measured RPM value
-        int pulses_per_rev;       // Number of pulses per revolution
-        int valid;                // Measurement status flag
+        uint32_t count;         // Total number of transitions (both rising and falling edges)
+        uint32_t rising_edges;  // Number of rising edges only (0->1 transitions)
+        uint32_t duration_ms;   // Actual measurement duration in milliseconds
+        int error;              // Error flag (1 if error occurred, 0 otherwise)
+    } pulse_count_t;
+
+    // GPIO pin information
+    typedef struct
+    {
+        char *chip_name;        // GPIO chip name (e.g., "gpiochip0")
+        unsigned int gpio_rel;  // GPIO line number relative to the chip
     } gpio_info_t;
 
     // Global configuration for the application
@@ -72,13 +81,18 @@ extern "C"
     void perform_measurements(config_t *config, int skip_output);
 
     // RPM measurement via polling (legacy fallback)
-    int gpio_get_value(gpio_info_t *info);
+    int gpio_get_value(struct gpiod_chip *chip, gpio_info_t *info, int *success);
 
     // RPM measurement using edge detection and threads
     int measure_rpm_edge(gpio_info_t *infos, int count, int duration, int debug);
 
     // Chip auto-detection via libgpiod
     void detect_chip(config_t *cfg);
+
+    // GPIO operations
+    struct gpiod_chip *gpio_open_chip(const char *chip_name);
+    void gpio_close_chip(struct gpiod_chip *chip);
+    pulse_count_t gpio_read_pulses(struct gpiod_chip *chip, gpio_info_t *info, int duration_ms);
 
 #ifdef __cplusplus
 }
