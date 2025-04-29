@@ -217,6 +217,142 @@ static const char v1_fallback_msg[] __attribute__((unused)) =
 struct gpiod_chip;
 struct gpiod_line;
 
+// Implementation of the v1 thread function for libgpiod v1
+static void *edge_measure_thread_v1(void *arg)
+{
+    edge_thread_args_t *args = (edge_thread_args_t *)arg;
+    gpio_info_t *info = args->info;
+    
+    char chip_path[128];
+    snprintf(chip_path, sizeof(chip_path), "/dev/%s", info->chip);
+    
+    if (args->debug)
+        fprintf(stderr, "[DEBUG-v1] GPIO %d: Opening chip %s\n", info->gpio_rel, chip_path);
+    
+    struct gpiod_chip *chip = gpiod_chip_open(chip_path);
+    if (!chip)
+    {
+        fprintf(stderr, "[ERROR-v1] Failed to open chip: %s\n", chip_path);
+        args->success = 0;
+        return NULL;
+    }
+    
+    struct gpiod_line *line = NULL;
+    int fd = -1;
+    int ret = -1;
+    
+    // Get line handle
+    line = gpiod_chip_get_line(chip, info->gpio_rel);
+    if (!line)
+    {
+        fprintf(stderr, "[ERROR-v1] Failed to get line %d on %s\n", info->gpio_rel, chip_path);
+        args->success = 0;
+        goto cleanup_v1;
+    }
+    
+    // Request line for monitoring both edges or fallback to falling only if both fails
+    if (args->debug)
+        fprintf(stderr, "[DEBUG-v1] Requesting line for edge monitoring\n");
+    
+    ret = gpiod_line_request_both_edges_events(line, "gpio-fan-rpm");
+    if (ret < 0)
+    {
+        if (args->debug)
+            fprintf(stderr, "[DEBUG-v1] Both edges failed, trying falling edge only\n");
+        
+        ret = gpiod_line_request_falling_edge_events(line, "gpio-fan-rpm");
+        if (ret < 0)
+        {
+            fprintf(stderr, "[ERROR-v1] Failed to request line for edge events\n");
+            args->success = 0;
+            goto cleanup_v1;
+        }
+    }
+    
+    // Get file descriptor for polling
+    fd = gpiod_line_event_get_fd(line);
+    if (fd < 0)
+    {
+        fprintf(stderr, "[ERROR-v1] Could not get event fd for line %d on %s\n", info->gpio_rel, chip_path);
+        gpiod_line_release(line); // Release line if request succeeded but fd failed
+        args->success = 0;
+        goto cleanup_v1;
+    }
+    
+    struct timespec start, now;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    
+    int count = 0;
+    struct pollfd pfd = {.fd = fd, .events = POLLIN};
+    
+    if (args->debug)
+    {
+        fprintf(stderr, "[DEBUG-v1] GPIO %d: Listening for edges (%d sec, %d pulses/rev)\n",
+                info->gpio_rel, args->duration, args->pulses_per_rev);
+    }
+    
+    while (1)
+    {
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        long elapsed_sec = now.tv_sec - start.tv_sec;
+        if (elapsed_sec >= args->duration)
+            break;
+        
+        // Calculate remaining time for poll timeout more accurately
+        long remaining_ms = (args->duration * 1000) - ((now.tv_sec - start.tv_sec) * 1000 + (now.tv_nsec - start.tv_nsec) / 1000000);
+        if (remaining_ms <= 0) break; // Time's up exactly
+        if (remaining_ms > 1000) remaining_ms = 1000; // Cap poll timeout
+        
+        int ret = poll(&pfd, 1, remaining_ms);
+        if (ret < 0)
+        {
+            if (errno == EINTR) continue;
+            perror("[ERROR-v1] poll()");
+            break;
+        }
+        else if (ret == 0)
+        {
+            // Timeout - check if overall duration is met before continuing
+            clock_gettime(CLOCK_MONOTONIC, &now);
+            if ((now.tv_sec - start.tv_sec) >= args->duration) break;
+            continue;
+        }
+        
+        // Event occurred
+        if (pfd.revents & POLLIN) {
+            struct gpiod_line_event event;
+            
+            ret = gpiod_line_event_read(line, &event);
+            if (ret < 0) {
+                perror("[ERROR-v1] Failed to read line event");
+                break;
+            }
+            
+            count++;
+        }
+    }
+    
+    args->rpm_out = (count > 0 && args->pulses_per_rev > 0 && args->duration > 0)
+                    ? (count * 60) / args->pulses_per_rev / args->duration
+                    : 0;
+    
+    if (args->debug)
+    {
+        fprintf(stderr, "[DEBUG-v1] GPIO %d: Counted %d edges\n", info->gpio_rel, count);
+        fprintf(stderr, "[DEBUG-v1] GPIO %d: RPM = %d (count=%d, pulses/rev=%d, duration=%d)\n",
+                info->gpio_rel, args->rpm_out, count, args->pulses_per_rev, args->duration);
+    }
+    
+    args->success = 1;
+    
+cleanup_v1:
+    if (line && fd >= 0)
+        gpiod_line_release(line);
+    if (chip)
+        gpiod_chip_close(chip);
+    return NULL;
+}
+
 #endif // GPIOD_API_VERSION check
 
 // Implementation of v1 compatibility functions for v2 environment
