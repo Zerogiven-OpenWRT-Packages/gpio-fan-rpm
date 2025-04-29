@@ -6,12 +6,21 @@
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
-#include <gpiod.h> // Must be included before checking GPIOD_API_VERSION
+#include <gpiod.h> // Must be included first to check for existing definitions
 #include <pthread.h>
 
 #include "gpio-fan-rpm.h"
 
-// Check if libgpiod v2 API version macro exists
+// Only define event constants if not already defined
+#ifndef GPIOD_LINE_EVENT_RISING_EDGE
+#define GPIOD_LINE_EVENT_RISING_EDGE 1
+#endif
+
+#ifndef GPIOD_LINE_EVENT_FALLING_EDGE
+#define GPIOD_LINE_EVENT_FALLING_EDGE 2
+#endif
+
+// Check if we have libgpiod v2 API (GPIOD_API_VERSION is defined)
 #ifdef GPIOD_API_VERSION
 
 // --- libgpiod v2 Implementation ---
@@ -167,25 +176,57 @@ cleanup_v2:
 
 #if defined(DEBUG)
 static const char v1_fallback_msg[] __attribute__((unused)) = 
-    "Note: Compiling with libgpiod v1 API fallback. GPIO bias settings might not be applied.";
+    "Note: Using libgpiod v1 API compatibility layer";
 #endif
 
-// Define missing v1 API prototypes and structures
-struct gpiod_chip *gpiod_chip_open(const char *path);
-void gpiod_chip_close(struct gpiod_chip *chip);
-struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int offset);
-int gpiod_line_request_both_edges_events(struct gpiod_line *line, const char *consumer);
-int gpiod_line_request_falling_edge_events(struct gpiod_line *line, const char *consumer);
-int gpiod_line_event_get_fd(struct gpiod_line *line);
-void gpiod_line_release(struct gpiod_line *line);
+// Only define v1 API prototypes if not already defined
+// DO NOT redefine existing functions or structs from kernel headers
+#ifndef HAVE_GPIOD_STRUCTS
 
-// Define the missing gpiod_line_event structure for v1 API
+// Forward declare required types if they're missing
+struct gpiod_chip;
+struct gpiod_line;
+
+// Only include these function prototypes if they're not already available
+// from the kernel headers
+#ifndef gpiod_chip_open
+struct gpiod_chip *gpiod_chip_open(const char *path);
+#endif
+#ifndef gpiod_chip_close
+void gpiod_chip_close(struct gpiod_chip *chip);
+#endif
+#ifndef gpiod_chip_get_line
+struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int offset);
+#endif
+#ifndef gpiod_line_request_both_edges_events
+int gpiod_line_request_both_edges_events(struct gpiod_line *line, const char *consumer);
+#endif
+#ifndef gpiod_line_request_falling_edge_events
+int gpiod_line_request_falling_edge_events(struct gpiod_line *line, const char *consumer);
+#endif
+#ifndef gpiod_line_event_get_fd
+int gpiod_line_event_get_fd(struct gpiod_line *line);
+#endif
+#ifndef gpiod_line_release
+void gpiod_line_release(struct gpiod_line *line);
+#endif
+
+// Only define the event structure if it's not already defined in the system headers
+// This is the critical fix for OpenWRT 23.05 versus 24.10 compatibility
+#if !defined(HAVE_GPIOD_LINE_EVENT_STRUCT) && !defined(__GPIOD_STRUCT_LINE_EVENT)
 struct gpiod_line_event {
     struct timespec ts;
     int event_type;
 };
+#define __GPIOD_STRUCT_LINE_EVENT 1  // Mark as defined for internal use
+#endif
 
+// Only declare the read function if not already defined
+#ifndef gpiod_line_event_read
 int gpiod_line_event_read(struct gpiod_line *line, struct gpiod_line_event *event);
+#endif
+
+#endif // HAVE_GPIOD_STRUCTS
 
 static void *edge_measure_thread_v1(void *arg) {
     edge_thread_args_t *args = (edge_thread_args_t *)arg;
@@ -321,7 +362,6 @@ static void *edge_measure_thread_v1(void *arg) {
 }
 
 #endif // GPIOD_API_VERSION check
-
 
 // --- Common measure_rpm_edge function ---
 

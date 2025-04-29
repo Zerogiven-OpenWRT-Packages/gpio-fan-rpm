@@ -35,30 +35,56 @@
     // Provide compatibility functions conditionally.
     #define USING_LIBGPIOD_V1 1
     
-    // Define the structure for gpiod_line_event first so it's available to all functions
-    #if !defined(HAVE_STRUCT_GPIOD_LINE_EVENT)
+    // Only forward declare types if they're not already declared
+    struct gpiod_chip;
+    struct gpiod_line;
+    
+    // Only define the event structure if not already defined in system headers
+    #if !defined(HAVE_GPIOD_LINE_EVENT_STRUCT) && !defined(__GPIOD_STRUCT_LINE_EVENT)
     struct gpiod_line_event {
         struct timespec ts;
         int event_type;
     };
+    #define __GPIOD_STRUCT_LINE_EVENT 1  // Mark as defined for internal use
     #endif
     
-    // Function prototypes for compatibility layer
+    // Function prototypes for compatibility layer - only declare if they're not already defined
+    #ifndef gpiod_chip_open_by_name
     struct gpiod_chip *gpiod_chip_open_by_name(const char *name);
+    #endif
+    #ifndef gpiod_chip_get_line
     struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int offset);
+    #endif
+    #ifndef gpiod_line_request_input_flags
     int gpiod_line_request_input_flags(struct gpiod_line *line, const char *consumer, int flags);
+    #endif
+    #ifndef gpiod_line_request_input
     int gpiod_line_request_input(struct gpiod_line *line, const char *consumer);
+    #endif
+    #ifndef gpiod_line_request_both_edges_events
     int gpiod_line_request_both_edges_events(struct gpiod_line *line, const char *consumer);
+    #endif
+    #ifndef gpiod_line_request_falling_edge_events
     int gpiod_line_request_falling_edge_events(struct gpiod_line *line, const char *consumer);
+    #endif
+    #ifndef gpiod_line_event_get_fd
     int gpiod_line_event_get_fd(struct gpiod_line *line);
+    #endif
+    #ifndef gpiod_line_get_value
     int gpiod_line_get_value(struct gpiod_line *line);
+    #endif
+    #ifndef gpiod_line_release
     void gpiod_line_release(struct gpiod_line *line);
+    #endif
+    #ifndef gpiod_line_event_read
     int gpiod_line_event_read(struct gpiod_line *line, struct gpiod_line_event *event);
+    #endif
     
     // These are the v1 API functions we need but might be missing or have different names
     // in the target environment's libgpiod. Only define the ones that 
     // couldn't be resolved in the other source files.
 
+    #ifndef gpiod_chip_open_by_name
     struct gpiod_chip *gpiod_chip_open_by_name(const char *name)
     {
         // Implementation using standard v1 API - convert name to path
@@ -66,9 +92,10 @@
         snprintf(path, sizeof(path), "/dev/%s", name);
         return gpiod_chip_open(path);
     }
+    #endif
 
     // Check for gpiod_chip_get_line
-    #if !defined(HAVE_GPIOD_CHIP_GET_LINE)
+    #if !defined(HAVE_GPIOD_CHIP_GET_LINE) && !defined(gpiod_chip_get_line)
     struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int offset)
     {
         // Suppress unused parameter warnings
