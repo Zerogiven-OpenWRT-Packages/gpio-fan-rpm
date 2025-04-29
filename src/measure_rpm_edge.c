@@ -65,7 +65,26 @@ static void *edge_measure_thread_v2(void *arg)
     gpiod_line_config_add_line_settings(line_cfg, &offset, 1, settings);
     gpiod_request_config_set_consumer(req_cfg, "gpio-fan-rpm");
 
+    // First try to request with both edge detection (most accurate)
     request = gpiod_chip_request_lines(chip, req_cfg, line_cfg);
+    
+    // If both edges fail, try falling edge (common for tachometers)
+    if (!request) {
+        if (args->debug)
+            fprintf(stderr, "[DEBUG-v2] GPIO %d: Both edges failed, trying falling edge...\n", info->gpio_rel);
+            
+        gpiod_line_settings_set_edge_detection(settings, GPIOD_LINE_EDGE_FALLING);
+        gpiod_line_config_reset(line_cfg);
+        gpiod_line_config_add_line_settings(line_cfg, &offset, 1, settings);
+        
+        request = gpiod_chip_request_lines(chip, req_cfg, line_cfg);
+        
+        if (request && args->debug)
+            fprintf(stderr, "[DEBUG-v2] GPIO %d: Using falling edge detection\n", info->gpio_rel);
+    } else if (args->debug) {
+        fprintf(stderr, "[DEBUG-v2] GPIO %d: Using both edge detection\n", info->gpio_rel);
+    }
+    
     if (!request)
     {
         fprintf(stderr, "[ERROR-v2] Failed to request line %d on %s\n", info->gpio_rel, chip_path);
@@ -132,15 +151,15 @@ static void *edge_measure_thread_v2(void *arg)
             int nread = gpiod_line_request_read_edge_events(request, buffer, 1);
             if (nread < 0) {
                  perror("[ERROR-v2] Failed to read edge events");
-                 gpiod_edge_event_buffer_free(buffer);
+                 gpiod_edge_event_buffer_free(buffer); // Ensure buffer is freed on error
                  break; // Error reading
             } else if (nread > 0) {
                 count += nread; // Successfully read events
             }
             // If nread == 0, it means no event was available despite poll indicating readiness,
-            // which can happen. Just continue the loop.
+            // which can happen. Just continue the loop after freeing the buffer.
 
-            gpiod_edge_event_buffer_free(buffer);
+            gpiod_edge_event_buffer_free(buffer); // Always free the buffer
         }
     }
 
