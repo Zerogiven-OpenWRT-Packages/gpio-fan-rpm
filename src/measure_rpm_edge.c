@@ -6,12 +6,22 @@
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
-#include <gpiod.h> // Must be included first to check for existing definitions
+#include <gpiod.h> // Include system gpiod.h first to get correct definitions
 #include <pthread.h>
 
 #include "gpio-fan-rpm.h"
 
-// Define GPIOD_LINE_EVENT_RISING_EDGE and GPIOD_LINE_EVENT_FALLING_EDGE only if not already defined
+// Structure to pass arguments to edge detection thread
+typedef struct {
+    gpio_info_t *info;
+    int pulses_per_rev;
+    int duration;
+    int debug;
+    int success;
+    int rpm_out;
+} edge_thread_args_t;
+
+// Define constants if not already defined in the system headers
 #ifndef GPIOD_LINE_EVENT_RISING_EDGE
 #define GPIOD_LINE_EVENT_RISING_EDGE 1
 #endif
@@ -20,30 +30,37 @@
 #define GPIOD_LINE_EVENT_FALLING_EDGE 2
 #endif
 
-// Check if libgpiod v2 API version macro exists
+// Declare v1 API functions for v2 environment
 #ifdef GPIOD_API_VERSION
-    // --- libgpiod v2 Implementation ---
+    // We're in a v2 environment (OpenWRT 24.10)
     
-    // For v2, we need to define the v1 API structures and functions that will be used
-    // in edge_measure_thread_v1 - DEFINE THESE BEFORE ANY FUNCTION IMPLEMENTATIONS
+    // We need to provide a v1-compatible event structure
+    #ifndef HAVE_GPIOD_LINE_EVENT_STRUCT
     struct gpiod_line_event {
         struct timespec ts;
         int event_type;
     };
-
-    // v1 API function prototypes for v2 environment - declare before any functions that use them
+    #define HAVE_GPIOD_LINE_EVENT_STRUCT 1
+    #endif
+    
+    // V1 API function prototypes - define these for v2 compatibility
     struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int offset);
     int gpiod_line_request_both_edges_events(struct gpiod_line *line, const char *consumer);
     int gpiod_line_request_falling_edge_events(struct gpiod_line *line, const char *consumer);
     int gpiod_line_event_get_fd(struct gpiod_line *line);
     void gpiod_line_release(struct gpiod_line *line);
     int gpiod_line_event_read(struct gpiod_line *line, struct gpiod_line_event *event);
-
-    // Implementation of v1 compatibility functions for v2 environment
-    // Convert v1 API calls to v2 API - IMPLEMENT BEFORE THEY ARE USED
+    
+    // Static storage for v2 compatibility
+    static struct gpiod_line_settings *v1_compat_settings = NULL;
+    static struct gpiod_line_config *v1_compat_line_cfg = NULL;
+    static struct gpiod_request_config *v1_compat_req_cfg = NULL;
+    static struct gpiod_line_request *v1_compat_request = NULL;
+    
+    // Implementation of v1 compatibility functions for v2 API
     struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int offset) {
-        // In v2, lines are requested through request configs, not individually
-        // This is a compatibility shim - we use a static line structure to emulate v1 behavior
+        // In v2, we don't get individual lines but use offsets during requests
+        // Store info for later use in a static variable
         static struct {
             struct gpiod_chip *chip;
             unsigned int offset;
@@ -54,30 +71,25 @@
             line_info.chip = chip;
             line_info.offset = offset;
             line_info.valid = 1;
-            // Return a pointer to our static struct as a "handle"
             return (struct gpiod_line *)&line_info;
         }
         return NULL;
     }
-
+    
     int gpiod_line_request_both_edges_events(struct gpiod_line *line, const char *consumer) {
-        if (!line) return -1;
-        // We don't actually make the request here - defer to when getting FD
+        // In v2, requests are handled differently - we defer to event_get_fd
+        (void)line;
+        (void)consumer;
         return 0; // Pretend it worked
     }
-
+    
     int gpiod_line_request_falling_edge_events(struct gpiod_line *line, const char *consumer) {
-        if (!line) return -1;
-        // We don't actually make the request here - defer to when getting FD
+        // In v2, requests are handled differently - we defer to event_get_fd
+        (void)line;
+        (void)consumer;
         return 0; // Pretend it worked
     }
-
-    // Static variables to hold v2 request data
-    static struct gpiod_line_settings *v1_compat_settings = NULL;
-    static struct gpiod_line_config *v1_compat_line_cfg = NULL;
-    static struct gpiod_request_config *v1_compat_req_cfg = NULL;
-    static struct gpiod_line_request *v1_compat_request = NULL;
-
+    
     int gpiod_line_event_get_fd(struct gpiod_line *line) {
         if (!line) return -1;
         
@@ -89,6 +101,12 @@
         } *line_info = (void *)line;
         
         if (!line_info->valid || !line_info->chip) return -1;
+        
+        // Clean up any existing request
+        if (v1_compat_request) {
+            gpiod_line_request_release(v1_compat_request);
+            v1_compat_request = NULL;
+        }
         
         // This is where we actually make the request in v2 style
         v1_compat_settings = gpiod_line_settings_new();
@@ -131,9 +149,9 @@
         
         return gpiod_line_request_get_fd(v1_compat_request);
     }
-
+    
     void gpiod_line_release(struct gpiod_line *line) {
-        if (!line) return;
+        (void)line; // Unused
         
         // Clean up v2 resources
         if (v1_compat_request) {
@@ -153,9 +171,11 @@
             v1_compat_req_cfg = NULL;
         }
     }
-
+    
     int gpiod_line_event_read(struct gpiod_line *line, struct gpiod_line_event *event) {
-        if (!line || !event || !v1_compat_request) return -1;
+        (void)line; // Unused
+        
+        if (!event || !v1_compat_request) return -1;
         
         // Read edge events using v2 API
         struct gpiod_edge_event_buffer *buffer = gpiod_edge_event_buffer_new(1);
@@ -186,26 +206,10 @@
         gpiod_edge_event_buffer_free(buffer);
         return -1;
     }
-    
-    static void *edge_measure_thread_v2(void *arg) {
-        // ... existing code ...
-    }
-#else
-    // --- Fallback to libgpiod v1 API ---
-    
-    #if defined(DEBUG)
-    static const char v1_fallback_msg[] __attribute__((unused)) = 
-        "Note: Using libgpiod v1 API compatibility layer";
-    #endif
+#endif // GPIOD_API_VERSION
 
-    // Forward declare types without redefinition
-    struct gpiod_chip;
-    struct gpiod_line;
-#endif
-
-// Common thread function for v1 API (used by both versions)
-static void *edge_measure_thread_v1(void *arg)
-{
+// Function to measure RPM using edge detection method (common for both v1/v2)
+static void *edge_measure_thread(void *arg) {
     edge_thread_args_t *args = (edge_thread_args_t *)arg;
     gpio_info_t *info = args->info;
     
@@ -213,12 +217,11 @@ static void *edge_measure_thread_v1(void *arg)
     snprintf(chip_path, sizeof(chip_path), "/dev/%s", info->chip);
     
     if (args->debug)
-        fprintf(stderr, "[DEBUG-v1] GPIO %d: Opening chip %s\n", info->gpio_rel, chip_path);
+        fprintf(stderr, "[DEBUG] GPIO %d: Opening chip %s\n", info->gpio_rel, chip_path);
     
     struct gpiod_chip *chip = gpiod_chip_open(chip_path);
-    if (!chip)
-    {
-        fprintf(stderr, "[ERROR-v1] Failed to open chip: %s\n", chip_path);
+    if (!chip) {
+        fprintf(stderr, "[ERROR] Failed to open chip: %s\n", chip_path);
         args->success = 0;
         return NULL;
     }
@@ -229,40 +232,36 @@ static void *edge_measure_thread_v1(void *arg)
     
     // Get line handle
     line = gpiod_chip_get_line(chip, info->gpio_rel);
-    if (!line)
-    {
-        fprintf(stderr, "[ERROR-v1] Failed to get line %d on %s\n", info->gpio_rel, chip_path);
+    if (!line) {
+        fprintf(stderr, "[ERROR] Failed to get line %d on %s\n", info->gpio_rel, chip_path);
         args->success = 0;
-        goto cleanup_v1;
+        goto cleanup;
     }
     
     // Request line for monitoring both edges or fallback to falling only if both fails
     if (args->debug)
-        fprintf(stderr, "[DEBUG-v1] Requesting line for edge monitoring\n");
+        fprintf(stderr, "[DEBUG] Requesting line for edge monitoring\n");
     
     ret = gpiod_line_request_both_edges_events(line, "gpio-fan-rpm");
-    if (ret < 0)
-    {
+    if (ret < 0) {
         if (args->debug)
-            fprintf(stderr, "[DEBUG-v1] Both edges failed, trying falling edge only\n");
+            fprintf(stderr, "[DEBUG] Both edges failed, trying falling edge only\n");
         
         ret = gpiod_line_request_falling_edge_events(line, "gpio-fan-rpm");
-        if (ret < 0)
-        {
-            fprintf(stderr, "[ERROR-v1] Failed to request line for edge events\n");
+        if (ret < 0) {
+            fprintf(stderr, "[ERROR] Failed to request line for edge events\n");
             args->success = 0;
-            goto cleanup_v1;
+            goto cleanup;
         }
     }
     
     // Get file descriptor for polling
     fd = gpiod_line_event_get_fd(line);
-    if (fd < 0)
-    {
-        fprintf(stderr, "[ERROR-v1] Could not get event fd for line %d on %s\n", info->gpio_rel, chip_path);
+    if (fd < 0) {
+        fprintf(stderr, "[ERROR] Could not get event fd for line %d on %s\n", info->gpio_rel, chip_path);
         gpiod_line_release(line); // Release line if request succeeded but fd failed
         args->success = 0;
-        goto cleanup_v1;
+        goto cleanup;
     }
     
     struct timespec start, now;
@@ -271,14 +270,12 @@ static void *edge_measure_thread_v1(void *arg)
     int count = 0;
     struct pollfd pfd = {.fd = fd, .events = POLLIN};
     
-    if (args->debug)
-    {
-        fprintf(stderr, "[DEBUG-v1] GPIO %d: Listening for edges (%d sec, %d pulses/rev)\n",
+    if (args->debug) {
+        fprintf(stderr, "[DEBUG] GPIO %d: Listening for edges (%d sec, %d pulses/rev)\n",
                 info->gpio_rel, args->duration, args->pulses_per_rev);
     }
     
-    while (1)
-    {
+    while (1) {
         clock_gettime(CLOCK_MONOTONIC, &now);
         long elapsed_sec = now.tv_sec - start.tv_sec;
         if (elapsed_sec >= args->duration)
@@ -290,14 +287,12 @@ static void *edge_measure_thread_v1(void *arg)
         if (remaining_ms > 1000) remaining_ms = 1000; // Cap poll timeout
         
         int ret = poll(&pfd, 1, remaining_ms);
-        if (ret < 0)
-        {
+        if (ret < 0) {
             if (errno == EINTR) continue;
-            perror("[ERROR-v1] poll()");
+            perror("[ERROR] poll()");
             break;
         }
-        else if (ret == 0)
-        {
+        else if (ret == 0) {
             // Timeout - check if overall duration is met before continuing
             clock_gettime(CLOCK_MONOTONIC, &now);
             if ((now.tv_sec - start.tv_sec) >= args->duration) break;
@@ -306,17 +301,11 @@ static void *edge_measure_thread_v1(void *arg)
         
         // Event occurred
         if (pfd.revents & POLLIN) {
-            #ifdef GPIOD_API_VERSION
-            // Using v2 API, the struct is already defined above
             struct gpiod_line_event event;
-            #else
-            // Using native v1 API, struct is already defined in system headers
-            struct gpiod_line_event event;
-            #endif
             
             ret = gpiod_line_event_read(line, &event);
             if (ret < 0) {
-                perror("[ERROR-v1] Failed to read line event");
+                perror("[ERROR] Failed to read line event");
                 break;
             }
             
@@ -325,19 +314,18 @@ static void *edge_measure_thread_v1(void *arg)
     }
     
     args->rpm_out = (count > 0 && args->pulses_per_rev > 0 && args->duration > 0)
-                    ? (count * 60) / args->pulses_per_rev / args->duration
-                    : 0;
+                   ? (count * 60) / args->pulses_per_rev / args->duration
+                   : 0;
     
-    if (args->debug)
-    {
-        fprintf(stderr, "[DEBUG-v1] GPIO %d: Counted %d edges\n", info->gpio_rel, count);
-        fprintf(stderr, "[DEBUG-v1] GPIO %d: RPM = %d (count=%d, pulses/rev=%d, duration=%d)\n",
+    if (args->debug) {
+        fprintf(stderr, "[DEBUG] GPIO %d: Counted %d edges\n", info->gpio_rel, count);
+        fprintf(stderr, "[DEBUG] GPIO %d: RPM = %d (count=%d, pulses/rev=%d, duration=%d)\n",
                 info->gpio_rel, args->rpm_out, count, args->pulses_per_rev, args->duration);
     }
     
     args->success = 1;
     
-cleanup_v1:
+cleanup:
     if (line && fd >= 0)
         gpiod_line_release(line);
     if (chip)
@@ -345,7 +333,34 @@ cleanup_v1:
     return NULL;
 }
 
-// --- Common measure_rpm_edge function ---
-int measure_rpm_edge(gpio_info_t *infos, int count, int duration, int debug) {
-    // ... existing code ...
+// Main measure_rpm_edge function - used by the CLI and daemon
+float measure_rpm_edge(const char *chip_name, int pin, int debug_level) {
+    if (!chip_name || pin < 0) {
+        fprintf(stderr, "[ERROR] Invalid chip name or pin\n");
+        return -1.0f;
+    }
+    
+    gpio_info_t info = {0};
+    strncpy(info.chip, chip_name, sizeof(info.chip) - 1);
+    info.gpio_rel = pin;
+    
+    // Use the common edge detection method
+    edge_thread_args_t args = {
+        .info = &info,
+        .pulses_per_rev = 2,  // Default: 2 pulses per revolution
+        .duration = 2,        // Default: 2 seconds measurement duration
+        .debug = debug_level,
+        .success = 0,
+        .rpm_out = 0
+    };
+    
+    // Run measurement in current thread (simpler than creating a new thread)
+    edge_measure_thread(&args);
+    
+    if (!args.success) {
+        fprintf(stderr, "[ERROR] Failed to measure RPM\n");
+        return -1.0f;
+    }
+    
+    return (float)args.rpm_out;
 }

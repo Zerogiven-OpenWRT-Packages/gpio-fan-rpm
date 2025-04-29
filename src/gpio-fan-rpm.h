@@ -30,21 +30,26 @@ extern "C"
     // GPIO pin information
     typedef struct
     {
-        char chip[MAX_CHIP_NAME];  // GPIO chip name (e.g., "gpiochip0")
-        unsigned int gpio_rel;     // GPIO line number relative to the chip
-        int pulses_per_rev;        // Pulses per revolution for this GPIO
-        int rpm;                   // Measured RPM value
-        int valid;                 // Flag to indicate valid measurement
+        char chip[32];          // chip name (e.g. "gpiochip0")
+        int gpio_rel;           // relative GPIO pin number on the chip
+        int pulses_per_rev;     // Pulses per revolution for this GPIO
+        int rpm;                // Measured RPM value
+        int valid;              // Flag to indicate valid measurement
     } gpio_info_t;
 
     // Global configuration for the application
     typedef struct
     {
+        char default_chip[32];  // Default GPIO chip name
+        int debug;              // Debug level
+        int daemon_mode;        // Run as daemon
+        char socket_path[128];  // Socket path for daemon
+        int interval;           // Measurement interval in seconds
+        int duration;           // Measurement duration in seconds
         gpio_info_t gpios[MAX_GPIOS]; // GPIO pin definitions
         int gpio_count;               // Number of GPIOs configured
 
         // Measurement parameters
-        int duration;       // Measurement duration in seconds
         int pulses_per_rev; // Pulses per revolution (global fallback)
 
         // Output format options
@@ -53,13 +58,9 @@ extern "C"
         int collectd_output; // --collectd
 
         // Behavior options
-        int debug;         // --debug
         int watch_mode;    // --watch
         int show_help;     // --help
         int show_version;  // --version
-
-        // Default chip fallback (used if not specified per-GPIO)
-        char default_chip[MAX_CHIP_NAME];
     } config_t;
 
     // Arguments for each thread used during edge-based RPM measurement
@@ -87,7 +88,7 @@ extern "C"
     int gpio_get_value(struct gpiod_chip *chip, gpio_info_t *info, int *success);
 
     // RPM measurement using edge detection and threads
-    int measure_rpm_edge(gpio_info_t *infos, int count, int duration, int debug);
+    float measure_rpm_edge(const char *chip_name, int pin, int debug_level);
 
     // Chip auto-detection via libgpiod
     void detect_chip(config_t *cfg);
