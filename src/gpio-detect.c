@@ -4,8 +4,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <gpiod.h>
+
 #include "gpio-fan-rpm.h"
+
+// Forward declaration for compatibility function if not defined
+#ifndef gpiod_chip_get_path
+const char *gpiod_chip_get_path(struct gpiod_chip *chip);
+#endif
 
 #define MAX_CHIPS 32
 
