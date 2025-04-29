@@ -7,23 +7,13 @@
 #include <poll.h>
 #include <errno.h>
 #include <pthread.h>
+#include <gpiod.h>
 
-// Include our compatibility header first
-#include "gpiod_compat.h"
-#include <gpiod.h> // Include system gpiod.h first to get correct definitions
-
+// Include our compatibility header
+#include "gpio_compat.h"
 #include "gpio-fan-rpm.h"
 
-// Define constants if not already defined in the system headers
-#ifndef GPIOD_LINE_EVENT_RISING_EDGE
-#define GPIOD_LINE_EVENT_RISING_EDGE 1
-#endif
-
-#ifndef GPIOD_LINE_EVENT_FALLING_EDGE
-#define GPIOD_LINE_EVENT_FALLING_EDGE 2
-#endif
-
-// Function to measure RPM using edge detection method (common for both v1/v2)
+// Function to measure RPM using edge detection method
 static void *edge_measure_thread(void *arg) {
     edge_thread_args_t *args = (edge_thread_args_t *)arg;
     gpio_info_t *info = args->info;
@@ -45,8 +35,8 @@ static void *edge_measure_thread(void *arg) {
     int fd = -1;
     int ret = -1;
     
-    // Get line handle
-    line = compat_gpiod_chip_get_line(chip, info->gpio_rel);
+    // Get line handle using our compatibility function
+    line = gpio_compat_get_line(chip, info->gpio_rel);
     if (!line) {
         fprintf(stderr, "[ERROR] Failed to get line %d on %s\n", info->gpio_rel, chip_path);
         args->success = 0;
@@ -57,12 +47,13 @@ static void *edge_measure_thread(void *arg) {
     if (args->debug)
         fprintf(stderr, "[DEBUG] Requesting line for edge monitoring\n");
     
-    ret = compat_gpiod_line_request_both_edges_events(line, "gpio-fan-rpm");
+    // Use our compatibility function to request events
+    ret = gpio_compat_request_events(line, "gpio-fan-rpm", 0); // Try both edges first
     if (ret < 0) {
         if (args->debug)
             fprintf(stderr, "[DEBUG] Both edges failed, trying falling edge only\n");
         
-        ret = compat_gpiod_line_request_falling_edge_events(line, "gpio-fan-rpm");
+        ret = gpio_compat_request_events(line, "gpio-fan-rpm", 1); // Try falling edge only
         if (ret < 0) {
             fprintf(stderr, "[ERROR] Failed to request line for edge events\n");
             args->success = 0;
@@ -70,11 +61,11 @@ static void *edge_measure_thread(void *arg) {
         }
     }
     
-    // Get file descriptor for polling
-    fd = compat_gpiod_line_event_get_fd(line);
+    // Get file descriptor for polling using our compatibility function
+    fd = gpio_compat_get_fd(line);
     if (fd < 0) {
         fprintf(stderr, "[ERROR] Could not get event fd for line %d on %s\n", info->gpio_rel, chip_path);
-        compat_gpiod_line_release(line); // Release line if request succeeded but fd failed
+        gpio_compat_release_line(line); // Release line if request succeeded but fd failed
         args->success = 0;
         goto cleanup;
     }
@@ -96,8 +87,9 @@ static void *edge_measure_thread(void *arg) {
         if (elapsed_sec >= args->duration)
             break;
         
-        // Calculate remaining time for poll timeout more accurately
-        long remaining_ms = (args->duration * 1000) - ((now.tv_sec - start.tv_sec) * 1000 + (now.tv_nsec - start.tv_nsec) / 1000000);
+        // Calculate remaining time for poll timeout
+        long remaining_ms = (args->duration * 1000) - ((now.tv_sec - start.tv_sec) * 1000 + 
+                           (now.tv_nsec - start.tv_nsec) / 1000000);
         if (remaining_ms <= 0) break; // Time's up exactly
         if (remaining_ms > 1000) remaining_ms = 1000; // Cap poll timeout
         
@@ -116,9 +108,9 @@ static void *edge_measure_thread(void *arg) {
         
         // Event occurred
         if (pfd.revents & POLLIN) {
-            struct compat_gpiod_line_event event;
+            struct gpio_compat_event event;
             
-            ret = compat_gpiod_line_event_read(line, &event);
+            ret = gpio_compat_read_event(line, &event);
             if (ret < 0) {
                 perror("[ERROR] Failed to read line event");
                 break;
@@ -142,13 +134,13 @@ static void *edge_measure_thread(void *arg) {
     
 cleanup:
     if (line && fd >= 0)
-        compat_gpiod_line_release(line);
+        gpio_compat_release_line(line);
     if (chip)
         gpiod_chip_close(chip);
     return NULL;
 }
 
-// Main measure_rpm_edge function - used by the CLI and daemon
+// Main measure_rpm_edge function
 float measure_rpm_edge(const char *chip_name, int pin, int debug_level) {
     if (!chip_name || pin < 0) {
         fprintf(stderr, "[ERROR] Invalid chip name or pin\n");
@@ -169,7 +161,7 @@ float measure_rpm_edge(const char *chip_name, int pin, int debug_level) {
         .rpm_out = 0
     };
     
-    // Run measurement in current thread (simpler than creating a new thread)
+    // Run measurement in current thread
     edge_measure_thread(&args);
     
     if (!args.success) {

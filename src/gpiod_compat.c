@@ -34,15 +34,12 @@ struct gpiod_line *compat_gpiod_chip_get_line(struct gpiod_chip *chip, unsigned 
         int valid;
     } line_info = {0};
     
-    if (chip) {
-        line_info.chip = chip;
-        line_info.offset = offset;
-        line_info.valid = 1;
-        return (struct gpiod_line *)&line_info;
-    }
-    return NULL;
+    line_info.chip = chip;
+    line_info.offset = offset;
+    line_info.valid = 1;
+    return (struct gpiod_line *)&line_info;
 #else
-    // v1 API implementation - direct call
+    // v1 API - direct call to the system function
     return gpiod_chip_get_line(chip, offset);
 #endif
 }
@@ -55,7 +52,7 @@ int compat_gpiod_line_request_both_edges_events(struct gpiod_line *line, const c
     // v2 API implementation - defer to event_get_fd
     return 0; // Pretend it worked
 #else
-    // v1 API implementation - direct call
+    // v1 API - direct call to the system function
     return gpiod_line_request_both_edges_events(line, consumer);
 #endif
 }
@@ -68,7 +65,7 @@ int compat_gpiod_line_request_falling_edge_events(struct gpiod_line *line, const
     // v2 API implementation - defer to event_get_fd
     return 0; // Pretend it worked
 #else
-    // v1 API implementation - direct call
+    // v1 API - direct call to the system function
     return gpiod_line_request_falling_edge_events(line, consumer);
 #endif
 }
@@ -135,7 +132,7 @@ int compat_gpiod_line_event_get_fd(struct gpiod_line *line)
     
     return gpiod_line_request_get_fd(v1_compat_request);
 #else
-    // v1 API implementation - direct call
+    // v1 API - direct call to the system function
     return gpiod_line_event_get_fd(line);
 #endif
 }
@@ -164,7 +161,7 @@ void compat_gpiod_line_release(struct gpiod_line *line)
         v1_compat_req_cfg = NULL;
     }
 #else
-    // v1 API implementation - direct call
+    // v1 API - direct call to the system function
     gpiod_line_release(line);
 #endif
 }
@@ -206,15 +203,31 @@ int compat_gpiod_line_event_read(struct gpiod_line *line, struct compat_gpiod_li
     gpiod_edge_event_buffer_free(buffer);
     return -1;
 #else
-    // v1 API implementation - direct call
-    struct gpiod_line_event v1_event;
-    int ret = gpiod_line_event_read(line, &v1_event);
-    if (ret == 0) {
-        // Copy to our compat structure
-        event->ts = v1_event.ts;
-        event->event_type = v1_event.event_type;
-    }
-    return ret;
+    // v1 API implementation using our compat structure
+    // We need to use a temporary struct that matches the system's definition
+    int ret;
+    // Use the raw read syscall on the file descriptor instead 
+    // to avoid the struct definition problem
+    int fd = compat_gpiod_line_event_get_fd(line);
+    if (fd < 0) return -1;
+    
+    // Read the raw event data directly from the file descriptor
+    // The v1 API struct has timestamp (16 bytes) and event_type (4 bytes)
+    unsigned char raw_event[24] = {0}; // Oversized to be safe
+    ret = read(fd, raw_event, sizeof(raw_event));
+    
+    if (ret <= 0) return (ret < 0) ? ret : -1;
+    
+    // Parse the raw event data - this assumes little-endian
+    // First 16 bytes are timestamp (struct timespec)
+    memcpy(&event->ts, raw_event, sizeof(struct timespec));
+    
+    // Next 4 bytes should be the event type
+    int event_type;
+    memcpy(&event_type, raw_event + sizeof(struct timespec), sizeof(int));
+    event->event_type = event_type;
+    
+    return 0;
 #endif
 }
 
@@ -228,21 +241,22 @@ const char *compat_gpiod_chip_get_path(struct gpiod_chip *chip)
     snprintf(path, sizeof(path), "/dev/%s", gpiod_chip_get_name(chip));
     return path;
 #else
-    // v1 API implementation - direct call if available
+    // v1 API implementation - try to use direct calls
+    static char path[128];
+    
     #ifdef gpiod_chip_get_path
     return gpiod_chip_get_path(chip);
     #else
     // Fallback implementation
-    static char path[128];
-    const char *name = NULL;
     #ifdef gpiod_chip_get_name
-    name = gpiod_chip_get_name(chip);
-    #endif
+    const char *name = gpiod_chip_get_name(chip);
     if (name) {
         snprintf(path, sizeof(path), "/dev/%s", name);
-    } else {
-        snprintf(path, sizeof(path), "/dev/gpiochip?");
+        return path;
     }
+    #endif
+    // Last resort fallback
+    snprintf(path, sizeof(path), "/dev/gpiochip?");
     return path;
     #endif
 #endif
