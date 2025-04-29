@@ -6,20 +6,10 @@
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
-#include <gpiod.h> // Include system gpiod.h first to get correct definitions
 #include <pthread.h>
+#include <gpiod.h> // Include system gpiod.h first to get correct definitions
 
 #include "gpio-fan-rpm.h"
-
-// Structure to pass arguments to edge detection thread
-typedef struct {
-    gpio_info_t *info;
-    int pulses_per_rev;
-    int duration;
-    int debug;
-    int success;
-    int rpm_out;
-} edge_thread_args_t;
 
 // Define constants if not already defined in the system headers
 #ifndef GPIOD_LINE_EVENT_RISING_EDGE
