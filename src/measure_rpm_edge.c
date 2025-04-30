@@ -6,12 +6,22 @@
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
-#include <gpiod.h> // Must be included first to check for existing definitions
+#include <gpiod.h> // Include system gpiod.h first to get correct definitions
 #include <pthread.h>
 
 #include "gpio-fan-rpm.h"
 
-// Define GPIOD_LINE_EVENT_RISING_EDGE and GPIOD_LINE_EVENT_FALLING_EDGE only if not already defined
+// Structure to pass arguments to edge detection thread
+typedef struct {
+    gpio_info_t *info;
+    int pulses_per_rev;
+    int duration;
+    int debug;
+    int success;
+    int rpm_out;
+} edge_thread_args_t;
+
+// Define constants if not already defined in the system headers
 #ifndef GPIOD_LINE_EVENT_RISING_EDGE
 #define GPIOD_LINE_EVENT_RISING_EDGE 1
 #endif
@@ -20,7 +30,7 @@
 #define GPIOD_LINE_EVENT_FALLING_EDGE 2
 #endif
 
-// Check if libgpiod v2 API version macro exists
+// Declare v1 API functions for v2 environment
 #ifdef GPIOD_API_VERSION
 
 // --- libgpiod v2 Implementation ---
@@ -106,14 +116,12 @@ static void *edge_measure_thread_v2(void *arg)
         if (remaining_ms > 1000) remaining_ms = 1000; // Cap poll timeout
 
         int ret = poll(&pfd, 1, remaining_ms);
-        if (ret < 0)
-        {
+        if (ret < 0) {
             if (errno == EINTR) continue;
             perror("[ERROR-v2] poll()");
             break;
         }
-        else if (ret == 0)
-        {
+        else if (ret == 0) {
             // Timeout - check if overall duration is met before continuing
             clock_gettime(CLOCK_MONOTONIC, &now);
             if ((now.tv_sec - start.tv_sec) >= args->duration) break;
