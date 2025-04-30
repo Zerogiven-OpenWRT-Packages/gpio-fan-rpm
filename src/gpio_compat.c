@@ -6,11 +6,8 @@
 #include <fcntl.h>
 #include "gpio_compat.h"
 
-// Check if we're using libgpiod v2 API
-#if defined(GPIOD_VERSION_STR) || defined(GPIOD_API_VERSION)
-    // We're in v2 API mode
-    #define USING_GPIOD_V2 1
-    
+// For v2 API - static variables needed for compatibility layer
+#ifdef GPIO_USING_V2_API
     // Static variables for v2 compatibility
     static struct gpiod_line_settings *compat_settings = NULL;
     static struct gpiod_line_config *compat_line_cfg = NULL;
@@ -27,11 +24,29 @@
     static compat_line_info_t line_storage = {0};
 #endif
 
+// For v1 API - forward declarations to avoid implicit function declarations
+#ifdef GPIO_USING_V1_API
+    // Only needed for v1 API - define the v1 function prototypes
+    extern struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int offset);
+    extern int gpiod_line_request_both_edges_events(struct gpiod_line *line, const char *consumer);
+    extern int gpiod_line_request_falling_edge_events(struct gpiod_line *line, const char *consumer);
+    extern int gpiod_line_event_get_fd(struct gpiod_line *line);
+    extern void gpiod_line_release(struct gpiod_line *line);
+    
+    // This is needed for reading events in v1 API
+    struct gpiod_line_event {
+        struct timespec ts;
+        int event_type;
+    };
+    extern int gpiod_line_event_read(struct gpiod_line *line, struct gpiod_line_event *event);
+#endif
+
+// Get a line handle from a chip
 struct gpiod_line *gpio_compat_get_line(struct gpiod_chip *chip, unsigned int offset)
 {
     if (!chip) return NULL;
 
-#ifdef USING_GPIOD_V2
+#ifdef GPIO_USING_V2_API
     // v2 API implementation
     line_storage.chip = chip;
     line_storage.offset = offset;
@@ -43,11 +58,12 @@ struct gpiod_line *gpio_compat_get_line(struct gpiod_chip *chip, unsigned int of
 #endif
 }
 
+// Request edge events on a line
 int gpio_compat_request_events(struct gpiod_line *line, const char *consumer, int falling_only)
 {
     if (!line) return -1;
 
-#ifdef USING_GPIOD_V2
+#ifdef GPIO_USING_V2_API
     // In v2, we defer the actual request until get_fd is called
     return 0;
 #else
@@ -60,11 +76,12 @@ int gpio_compat_request_events(struct gpiod_line *line, const char *consumer, in
 #endif
 }
 
+// Get a file descriptor for polling
 int gpio_compat_get_fd(struct gpiod_line *line)
 {
     if (!line) return -1;
 
-#ifdef USING_GPIOD_V2
+#ifdef GPIO_USING_V2_API
     // v2 API implementation - now we set up and make the actual request
     compat_line_info_t *info = (compat_line_info_t *)line;
     if (!info->valid || !info->chip) return -1;
@@ -122,11 +139,12 @@ int gpio_compat_get_fd(struct gpiod_line *line)
 #endif
 }
 
+// Release resources associated with a line
 void gpio_compat_release_line(struct gpiod_line *line)
 {
     if (!line) return;
 
-#ifdef USING_GPIOD_V2
+#ifdef GPIO_USING_V2_API
     // v2 API - clean up resources
     if (compat_request) {
         gpiod_line_request_release(compat_request);
@@ -150,11 +168,12 @@ void gpio_compat_release_line(struct gpiod_line *line)
 #endif
 }
 
+// Read an event from a line
 int gpio_compat_read_event(struct gpiod_line *line, struct gpio_compat_event *event)
 {
     if (!line || !event) return -1;
 
-#ifdef USING_GPIOD_V2
+#ifdef GPIO_USING_V2_API
     // v2 API implementation
     if (!compat_request) return -1;
     
@@ -187,15 +206,11 @@ int gpio_compat_read_event(struct gpiod_line *line, struct gpio_compat_event *ev
     gpiod_edge_event_buffer_free(buffer);
     return -1;
 #else
-    // v1 API implementation - read from fd directly to avoid struct definition issues
-    int fd = gpio_compat_get_fd(line);
-    if (fd < 0) return -1;
-    
-    // Using the actual gpiod_line_event struct which exists in v1
+    // v1 API implementation - use the system's v1 API
     struct gpiod_line_event v1_event;
-    int ret = read(fd, &v1_event, sizeof(v1_event));
+    int ret = gpiod_line_event_read(line, &v1_event);
     
-    if (ret <= 0) return (ret < 0) ? ret : -1;
+    if (ret < 0) return ret;
     
     // Copy to our common structure
     event->ts = v1_event.ts;
@@ -211,13 +226,14 @@ int gpio_compat_read_event(struct gpiod_line *line, struct gpio_compat_event *ev
 #endif
 }
 
+// Get the path for a chip
 const char *gpio_compat_get_chip_path(struct gpiod_chip *chip)
 {
     if (!chip) return NULL;
     
     static char path[128];
 
-#ifdef USING_GPIOD_V2
+#ifdef GPIO_USING_V2_API
     // v2 API implementation
     snprintf(path, sizeof(path), "/dev/%s", gpiod_chip_get_name(chip));
     return path;
