@@ -4,11 +4,6 @@ PKG_NAME    := gpio-fan-rpm
 PKG_VERSION := 1.0.0
 PKG_RELEASE := 1
 
-PKG_SOURCE_PROTO := git
-PKG_SOURCE_URL := https://github.com/CSoellinger/gpio-fan-rpm.git
-PKG_SOURCE_VERSION := main
-PKG_MIRROR_HASH := skip
-
 PKG_MAINTAINER     := CSoellinger
 PKG_LICENSE        := GPL
 PKG_LICENSE_FILES  := LICENSE
@@ -41,13 +36,13 @@ TARGET_CFLAGS += -Wall -Wextra -pthread $(FPIC) \
 TARGET_LDFLAGS += -pthread 
 
 define Build/Compile
-	$(MAKE) -C $(PKG_BUILD_DIR)/src \
+	$(MAKE) -C $(PKG_BUILD_DIR) \
 		CROSS="$(TARGET_CROSS)"
 endef
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/gpio-fan-rpm $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/gpio-fan-rpm $(1)/usr/bin/
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
