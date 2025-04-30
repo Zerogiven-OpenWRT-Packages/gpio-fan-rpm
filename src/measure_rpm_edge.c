@@ -21,7 +21,8 @@
 #endif
 
 // Check if libgpiod v2 API version macro exists
-#ifdef GPIOD_API_VERSION
+#if defined(GPIOD_API_VERSION) || defined(GPIOD_VERSION_STR)
+#define USING_LIBGPIOD_V2 1
 
 // --- libgpiod v2 Implementation ---
 
@@ -174,14 +175,21 @@ cleanup_v2:
 
 #else // --- Fallback to libgpiod v1 API ---
 
-#if defined(DEBUG)
-static const char v1_fallback_msg[] __attribute__((unused)) = 
-    "Note: Using libgpiod v1 API compatibility layer";
-#endif
+#define USING_LIBGPIOD_V1 1
 
-// Forward declare types without redefinition
-struct gpiod_chip;
-struct gpiod_line;
+// Structure needed for v1 API only
+struct gpiod_line_event {
+    struct timespec ts;
+    int event_type;
+};
+
+// Declare function prototypes to avoid implicit declarations
+extern struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int offset);
+extern int gpiod_line_request_both_edges_events(struct gpiod_line *line, const char *consumer);
+extern int gpiod_line_request_falling_edge_events(struct gpiod_line *line, const char *consumer);
+extern int gpiod_line_event_get_fd(struct gpiod_line *line);
+extern void gpiod_line_release(struct gpiod_line *line);
+extern int gpiod_line_event_read(struct gpiod_line *line, struct gpiod_line_event *event);
 
 static void *edge_measure_thread_v1(void *arg) {
     edge_thread_args_t *args = (edge_thread_args_t *)arg;
@@ -330,7 +338,7 @@ int measure_rpm_edge(gpio_info_t *infos, int count, int duration, int debug)
         return -1;
     }
 
-#ifdef GPIOD_API_VERSION
+#ifdef USING_LIBGPIOD_V2
     if (debug) fprintf(stderr, "[DEBUG] Using libgpiod v2 API for edge measurement\n");
     void *(*thread_func)(void *) = edge_measure_thread_v2;
 #else
