@@ -40,15 +40,15 @@ TARGET_LDFLAGS += -pthread
 # - 24.05+ uses libgpiod v2
 define Build/Compile
 	@if [ "$(CONFIG_TARGET_KERNEL_VERSION)" \> "6.0.0" ]; then \
-		$(MAKE) -C $(PKG_BUILD_DIR)/src CROSS="$(TARGET_CROSS)" GPIOD_V2=1; \
+		$(MAKE) -C $(PKG_BUILD_DIR) CROSS="$(TARGET_CROSS)" GPIOD_V2=1; \
 	else \
-		$(MAKE) -C $(PKG_BUILD_DIR)/src CROSS="$(TARGET_CROSS)" GPIOD_V2=0; \
+		$(MAKE) -C $(PKG_BUILD_DIR) CROSS="$(TARGET_CROSS)" GPIOD_V2=0; \
 	fi
 endef
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/gpio-fan-rpm $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/gpio-fan-rpm $(1)/usr/bin/
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
