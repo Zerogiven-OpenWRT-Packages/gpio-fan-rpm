@@ -6,253 +6,123 @@
 #include <fcntl.h>
 #include "gpio_compat.h"
 
-// Check if we're using libgpiod v2 API by looking for v2-specific symbols
-#if defined(GPIOD_EDGE_EVENT_RISING_EDGE) || defined(GPIOD_LINE_DIRECTION_INPUT)
-    #define GPIO_USING_V2_API 1
-#else
-    #define GPIO_USING_V1_API 1
-#endif
+/**
+ * This file provides a compatibility layer for libgpiod v1 and v2.
+ * It detects the version at compile time and provides a unified API.
+ */
 
-// For v2 API - static variables needed for compatibility layer
-#ifdef GPIO_USING_V2_API
-    // Static variables for v2 compatibility
-    static struct gpiod_line_settings *compat_settings = NULL;
-    static struct gpiod_line_config *compat_line_cfg = NULL;
-    static struct gpiod_request_config *compat_req_cfg = NULL;
-    static struct gpiod_line_request *compat_request = NULL;
-    
-    // Line info storage for our v2 implementation
-    typedef struct {
-        struct gpiod_chip *chip;
-        unsigned int offset;
-        int valid;
-    } compat_line_info_t;
-    
-    static compat_line_info_t line_storage = {0};
+#if GPIOD_VERSION_MAJOR >= 2
+// libgpiod v2 implementation
 
-    // Forward declaration for v2 API 
-    extern const char *gpiod_chip_get_name(struct gpiod_chip *chip);
-#endif
-
-// For v1 API - forward declarations to avoid implicit function declarations
-#ifdef GPIO_USING_V1_API
-    // Only needed for v1 API - define the v1 function prototypes
-    extern struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int offset);
-    extern int gpiod_line_request_both_edges_events(struct gpiod_line *line, const char *consumer);
-    extern int gpiod_line_request_falling_edge_events(struct gpiod_line *line, const char *consumer);
-    extern int gpiod_line_event_get_fd(struct gpiod_line *line);
-    extern void gpiod_line_release(struct gpiod_line *line);
-    
-    // This is needed for reading events in v1 API
-    struct gpiod_line_event {
-        struct timespec ts;
-        int event_type;
-    };
-    extern int gpiod_line_event_read(struct gpiod_line *line, struct gpiod_line_event *event);
-#endif
-
-// Get a line handle from a chip
 struct gpiod_line *gpio_compat_get_line(struct gpiod_chip *chip, unsigned int offset)
 {
-    if (!chip) return NULL;
-
-#ifdef GPIO_USING_V2_API
-    // v2 API implementation
-    line_storage.chip = chip;
-    line_storage.offset = offset;
-    line_storage.valid = 1;
-    return (struct gpiod_line *)&line_storage;
-#else
-    // v1 API implementation
     return gpiod_chip_get_line(chip, offset);
-#endif
 }
 
-// Request edge events on a line
-int gpio_compat_request_events(struct gpiod_line *line, const char *consumer, int falling_only)
+int gpio_compat_request_events(struct gpiod_line *line, const char *consumer, int direction)
 {
-    if (!line) return -1;
+    struct gpiod_line_request_config config = {
+        .consumer = consumer,
+        .request_type = GPIOD_LINE_REQUEST_EVENT_FALLING_EDGE,
+        .flags = 0,
+    };
 
-#ifdef GPIO_USING_V2_API
-    // In v2, we defer the actual request until get_fd is called
-    return 0;
-#else
-    // v1 API implementation
-    if (falling_only) {
-        return gpiod_line_request_falling_edge_events(line, consumer);
-    } else {
-        return gpiod_line_request_both_edges_events(line, consumer);
+    if (direction == 0) {
+        config.request_type = GPIOD_LINE_REQUEST_EVENT_RISING_EDGE;
+    } else if (direction == 2) {
+        config.request_type = GPIOD_LINE_REQUEST_EVENT_BOTH_EDGES;
     }
-#endif
+
+    return gpiod_line_request(line, &config, 0);
 }
 
-// Get a file descriptor for polling
-int gpio_compat_get_fd(struct gpiod_line *line)
-{
-    if (!line) return -1;
-
-#ifdef GPIO_USING_V2_API
-    // v2 API implementation - now we set up and make the actual request
-    compat_line_info_t *info = (compat_line_info_t *)line;
-    if (!info->valid || !info->chip) return -1;
-    
-    // Clean up any existing request resources
-    if (compat_request) {
-        gpiod_line_request_release(compat_request);
-        compat_request = NULL;
-    }
-    
-    // Set up a new request with the right settings
-    compat_settings = gpiod_line_settings_new();
-    if (!compat_settings) return -1;
-    
-    gpiod_line_settings_set_direction(compat_settings, GPIOD_LINE_DIRECTION_INPUT);
-    gpiod_line_settings_set_edge_detection(compat_settings, GPIOD_LINE_EDGE_BOTH);
-    gpiod_line_settings_set_bias(compat_settings, GPIOD_LINE_BIAS_PULL_UP);
-    
-    compat_line_cfg = gpiod_line_config_new();
-    if (!compat_line_cfg) {
-        gpiod_line_settings_free(compat_settings);
-        compat_settings = NULL;
-        return -1;
-    }
-    
-    compat_req_cfg = gpiod_request_config_new();
-    if (!compat_req_cfg) {
-        gpiod_line_settings_free(compat_settings);
-        gpiod_line_config_free(compat_line_cfg);
-        compat_settings = NULL;
-        compat_line_cfg = NULL;
-        return -1;
-    }
-    
-    // Configure and make the request
-    unsigned int offset = info->offset;
-    gpiod_line_config_add_line_settings(compat_line_cfg, &offset, 1, compat_settings);
-    gpiod_request_config_set_consumer(compat_req_cfg, "gpio-fan-rpm");
-    
-    compat_request = gpiod_chip_request_lines(info->chip, compat_req_cfg, compat_line_cfg);
-    if (!compat_request) {
-        gpiod_line_settings_free(compat_settings);
-        gpiod_line_config_free(compat_line_cfg);
-        gpiod_request_config_free(compat_req_cfg);
-        compat_settings = NULL;
-        compat_line_cfg = NULL;
-        compat_req_cfg = NULL;
-        return -1;
-    }
-    
-    return gpiod_line_request_get_fd(compat_request);
-#else
-    // v1 API implementation
-    return gpiod_line_event_get_fd(line);
-#endif
-}
-
-// Release resources associated with a line
 void gpio_compat_release_line(struct gpiod_line *line)
 {
-    if (!line) return;
-
-#ifdef GPIO_USING_V2_API
-    // v2 API - clean up resources
-    if (compat_request) {
-        gpiod_line_request_release(compat_request);
-        compat_request = NULL;
-    }
-    if (compat_settings) {
-        gpiod_line_settings_free(compat_settings);
-        compat_settings = NULL;
-    }
-    if (compat_line_cfg) {
-        gpiod_line_config_free(compat_line_cfg);
-        compat_line_cfg = NULL;
-    }
-    if (compat_req_cfg) {
-        gpiod_request_config_free(compat_req_cfg);
-        compat_req_cfg = NULL;
-    }
-#else
-    // v1 API implementation
     gpiod_line_release(line);
-#endif
 }
 
-// Read an event from a line
+int gpio_compat_get_fd(struct gpiod_line *line)
+{
+    return gpiod_line_event_get_fd(line);
+}
+
 int gpio_compat_read_event(struct gpiod_line *line, struct gpio_compat_event *event)
 {
-    if (!line || !event) return -1;
-
-#ifdef GPIO_USING_V2_API
-    // v2 API implementation
-    if (!compat_request) return -1;
-    
-    // Read events using v2 API
-    struct gpiod_edge_event_buffer *buffer = gpiod_edge_event_buffer_new(1);
-    if (!buffer) return -1;
-    
-    int ret = gpiod_line_request_read_edge_events(compat_request, buffer, 1);
-    if (ret <= 0) {
-        gpiod_edge_event_buffer_free(buffer);
-        return (ret < 0) ? ret : -1;
-    }
-    
-    // Convert to our event format
-    const struct gpiod_edge_event *v2_event = gpiod_edge_event_buffer_get_event(buffer, 0);
-    if (v2_event) {
-        event->ts = gpiod_edge_event_get_timestamp(v2_event);
-        
-        int event_type = gpiod_edge_event_get_event_type(v2_event);
-        if (event_type == GPIOD_EDGE_EVENT_RISING_EDGE) {
-            event->event_type = GPIO_COMPAT_RISING_EDGE;
-        } else {
-            event->event_type = GPIO_COMPAT_FALLING_EDGE;
-        }
-        
-        gpiod_edge_event_buffer_free(buffer);
-        return 0; // Success
-    }
-    
-    gpiod_edge_event_buffer_free(buffer);
-    return -1;
-#else
-    // v1 API implementation - use the system's v1 API
-    struct gpiod_line_event v1_event;
-    int ret = gpiod_line_event_read(line, &v1_event);
-    
+    struct gpiod_line_event gpiod_event;
+    int ret = gpiod_line_event_read(line, &gpiod_event);
     if (ret < 0) return ret;
-    
-    // Copy to our common structure
-    event->ts = v1_event.ts;
-    
-    // Convert event type to our constants
-    if (v1_event.event_type == 1) { // GPIOD_LINE_EVENT_RISING_EDGE in v1
-        event->event_type = GPIO_COMPAT_RISING_EDGE;
-    } else {
-        event->event_type = GPIO_COMPAT_FALLING_EDGE;
-    }
+
+    event->timestamp = gpiod_event.ts.tv_sec * 1000000000ULL + gpiod_event.ts.tv_nsec;
+    event->event_type = (gpiod_event.event_type == GPIOD_LINE_EVENT_RISING_EDGE) ? 1 : 0;
     
     return 0;
-#endif
 }
 
-// Get the path for a chip
 const char *gpio_compat_get_chip_path(struct gpiod_chip *chip)
 {
-    if (!chip) return NULL;
-    
-    static char path[128];
-
-#ifdef GPIO_USING_V2_API
-    // v2 API implementation
-    const char *name = gpiod_chip_get_name(chip);
-    snprintf(path, sizeof(path), "/dev/%s", name ? name : "gpiochip?");
-    return path;
-#else
-    // v1 API implementation using direct path construction
-    // Let's use the most basic approach to avoid API inconsistencies
-    // We'll attempt to extract the chip number from the pointer value
-    snprintf(path, sizeof(path), "/dev/gpiochip%d", (unsigned int)((uintptr_t)chip & 0xFF) % 10);
-    return path;
-#endif
+    return gpiod_chip_name(chip);
 }
+
+int gpio_compat_get_value(struct gpiod_line *line, int *success)
+{
+    *success = 1;
+    return gpiod_line_get_value(line);
+}
+
+#else
+// libgpiod v1 implementation
+
+struct gpiod_line *gpio_compat_get_line(struct gpiod_chip *chip, unsigned int offset)
+{
+    return gpiod_chip_get_line(chip, offset);
+}
+
+int gpio_compat_request_events(struct gpiod_line *line, const char *consumer, int direction)
+{
+    int event_type;
+    
+    if (direction == 0) {
+        event_type = GPIOD_LINE_REQUEST_EVENT_RISING_EDGE;
+    } else if (direction == 1) {
+        event_type = GPIOD_LINE_REQUEST_EVENT_FALLING_EDGE;
+    } else {
+        event_type = GPIOD_LINE_REQUEST_EVENT_BOTH_EDGES;
+    }
+    
+    return gpiod_line_request_events(line, consumer, event_type, 0);
+}
+
+void gpio_compat_release_line(struct gpiod_line *line)
+{
+    gpiod_line_release(line);
+}
+
+int gpio_compat_get_fd(struct gpiod_line *line)
+{
+    return gpiod_line_event_get_fd(line);
+}
+
+int gpio_compat_read_event(struct gpiod_line *line, struct gpio_compat_event *event)
+{
+    struct gpiod_line_event gpiod_event;
+    int ret = gpiod_line_event_read(line, &gpiod_event);
+    if (ret < 0) return ret;
+
+    event->timestamp = gpiod_event.ts.tv_sec * 1000000000ULL + gpiod_event.ts.tv_nsec;
+    event->event_type = (gpiod_event.event_type == GPIOD_LINE_EVENT_RISING_EDGE) ? 1 : 0;
+    
+    return 0;
+}
+
+const char *gpio_compat_get_chip_path(struct gpiod_chip *chip)
+{
+    return gpiod_chip_name(chip);
+}
+
+int gpio_compat_get_value(struct gpiod_line *line, int *success)
+{
+    *success = 1;
+    return gpiod_line_get_value(line);
+}
+
+#endif /* GPIOD_VERSION_MAJOR */
