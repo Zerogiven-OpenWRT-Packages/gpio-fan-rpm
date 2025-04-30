@@ -7,11 +7,10 @@
 #include <poll.h>
 #include <errno.h>
 #include <pthread.h>
+#include <gpiod.h>
 
-// Include our compatibility header first
-#include "gpiod_compat.h"
-#include <gpiod.h> // Include system gpiod.h first to get correct definitions
-
+// Include our compatibility header
+#include "gpio_compat.h"
 #include "gpio-fan-rpm.h"
 
 // Define constants if not already defined in the system headers
