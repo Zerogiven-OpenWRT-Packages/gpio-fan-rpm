@@ -4,11 +4,6 @@ PKG_NAME    := gpio-fan-rpm
 PKG_VERSION := 1.0.0
 PKG_RELEASE := 1
 
-PKG_SOURCE_PROTO := git
-PKG_SOURCE_URL := https://github.com/CSoellinger/gpio-fan-rpm.git
-PKG_SOURCE_VERSION := main
-PKG_MIRROR_HASH := skip
-
 PKG_MAINTAINER     := CSoellinger
 PKG_LICENSE        := GPL
 PKG_LICENSE_FILES  := LICENSE
