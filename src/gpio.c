@@ -4,13 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
+#include <errno.h> // Include errno for error reporting
 #include <unistd.h>
-#include <time.h>
-#include <fcntl.h>
-#include <poll.h>
-#include "gpio.h"
-#include "gpio_compat.h"
+#include <gpiod.h>
 #include "gpio-fan-rpm.h"
 
 // Detect libgpiod version
@@ -55,13 +51,21 @@ struct gpiod_chip *gpio_open_chip(const char *chip_name)
     return chip;
 }
 
-    // Use our compatibility layer to get the line
-    gpio->line = gpio_compat_get_line(gpio->chip, pin);
-    if (!gpio->line) {
-        fprintf(stderr, "Error: Cannot get line %d from chip '%s': %s\n", 
-                pin, chipname, strerror(errno));
-        gpio_close(gpio);
-        return NULL;
+// Close GPIO chip
+void gpio_close_chip(struct gpiod_chip *chip)
+{
+    if (chip)
+        gpiod_chip_close(chip);
+}
+
+// Get GPIO value (single read)
+int gpio_get_value(struct gpiod_chip *chip, gpio_info_t *info, int *success)
+{
+    if (!chip)
+    {
+        if (success)
+            *success = 0;
+        return -1;
     }
 
 #ifdef LIBGPIOD_V2
@@ -106,49 +110,45 @@ struct gpiod_chip *gpio_open_chip(const char *chip_name)
         return -1;
     }
 
-    if (ret == 0) {
-        // Timeout
-        return 0;
-    }
-
-    if (pfd.revents & POLLIN) {
-        struct gpio_compat_event event;
-        
-        // Use our compatibility layer to read the event
-        if (gpio_compat_read_event(gpio->line, &event) < 0) {
-            fprintf(stderr, "Error: Failed to read GPIO event: %s\n", strerror(errno));
+    // Try to request with pull-up bias (might fail on older systems)
+    if (gpiod_line_request_input_flags(line, "gpio-fan-rpm-read", GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP) < 0) {
+        // Fall back to no pull-up if not supported
+        if (gpiod_line_request_input(line, "gpio-fan-rpm-read") < 0) {
+            fprintf(stderr, "Error: Unable to request GPIO line %d for input\n", info->gpio_rel);
+            gpiod_line_release(line);
+            if (success)
+                *success = 0;
             return -1;
         }
-        
-        // Got an event (we only request falling edges)
-        return 1;
     }
 
-    return 0;
-}
+    int val_int = gpiod_line_get_value(line);
+    if (val_int < 0)
+    {
+        fprintf(stderr, "Error: Unable to read value from GPIO line %d\n", info->gpio_rel);
+        if (success)
+            *success = 0;
+    }
+    else if (success)
+    {
+        *success = 1;
+    }
 
-const char *gpio_get_chipname(struct gpio_pin *gpio)
-{
-    if (!gpio || !gpio->chip) return NULL;
-    
-    // Use our compatibility layer to get the chip path
-    const char *path = gpio_compat_get_chip_path(gpio->chip);
-    if (!path) return "unknown";
-    
-    // Return just the filename portion
-    const char *name = strrchr(path, '/');
-    return name ? name + 1 : path;
+    if (line) gpiod_line_release(line); // Release line only if it was successfully acquired/requested
+
+    return val_int;
+#endif
 }
 
 // Read GPIO pin transitions (pulses) over a period of time
-pulse_count_t gpio_read_pulses(struct gpio_pin *gpio, int duration_ms)
+pulse_count_t gpio_read_pulses(struct gpiod_chip *chip, gpio_info_t *info, int duration_ms)
 {
     pulse_count_t result = {0};
     int val, prev_val = -1, success;
     struct timespec start_time, current_time;
     long elapsed_ms;
 
-    if (!gpio)
+    if (!chip)
     {
         return result;
     }
@@ -165,7 +165,7 @@ pulse_count_t gpio_read_pulses(struct gpio_pin *gpio, int duration_ms)
         if (elapsed_ms >= duration_ms)
             break;
 
-        val = gpio_compat_get_value(gpio->line, &success);
+        val = gpio_get_value(chip, info, &success);
         if (!success)
         {
             result.error = 1;

@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     int warmup_time = config.duration / 2;
     int measure_time = config.duration - warmup_time;
 
-    // Auto-detect chip if empty
+    // Chip autodetect falls leer
     if (config.default_chip[0] == '\0')
     {
         detect_chip(&config);
@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Complete GPIO setup
+    // GPIO Setup vervollständigen
     for (int i = 0; i < config.gpio_count; i++)
     {
         if (config.gpios[i].pulses_per_rev <= 0)
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
     perform_measurements(&config, 1);
     sleep(warmup_time);
 
-    // Prepare measurement
+    // Messung vorbereiten
     config.duration = measure_time;
 
     if (config.watch_mode)
