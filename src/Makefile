@@ -6,14 +6,22 @@ CFLAGS+=-Wall -Wextra -pthread
 LDFLAGS+=-pthread
 LDLIBS=-lgpiod -ljson-c -lpthread
 
-# Detect libgpiod version to choose the right compat implementation
-VERSION_TEST := $(shell $(CC) -E -dM -xc /dev/null | grep -q GPIOD_LINE_DIRECTION_INPUT || echo v1)
-ifeq ($(VERSION_TEST), v1)
-    # We're compiling for libgpiod v1 (OpenWRT 23.05)
-    COMPAT_SRC = gpio_compat_v1.c
-else
+# Use GPIOD_V2=1 for OpenWRT 24.10 (libgpiod v2)
+# Use GPIOD_V2=0 or leave unset for OpenWRT 23.05 (libgpiod v1)
+ifdef GPIOD_V2
+ifeq ($(GPIOD_V2),1)
     # We're compiling for libgpiod v2 (OpenWRT 24.10)
     COMPAT_SRC = gpio_compat_v2.c
+    CFLAGS += -DGPIOD_VERSION=2
+else
+    # We're compiling for libgpiod v1 (OpenWRT 23.05)
+    COMPAT_SRC = gpio_compat_v1.c
+    CFLAGS += -DGPIOD_VERSION=1
+endif
+else
+    # Default to v1 if not specified
+    COMPAT_SRC = gpio_compat_v1.c
+    CFLAGS += -DGPIOD_VERSION=1
 endif
 
 # Sources and objects

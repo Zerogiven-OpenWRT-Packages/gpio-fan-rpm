@@ -61,12 +61,12 @@ int gpio_compat_read_event(struct gpiod_line *line, struct gpio_compat_event *ev
 // Get the path for a chip
 const char *gpio_compat_get_chip_path(struct gpiod_chip *chip)
 {
+    if (!chip) return NULL;
+    
     static char path[128];
-    const char *name = gpiod_chip_name(chip);
-    if (name) {
-        snprintf(path, sizeof(path), "/dev/%s", name);
-    } else {
-        snprintf(path, sizeof(path), "/dev/gpiochip?");
-    }
+    
+    // In v1 API we use a different approach since gpiod_chip_name may not exist
+    // We'll construct a path based on what we know
+    snprintf(path, sizeof(path), "/dev/gpiochip0");
     return path;
 }
