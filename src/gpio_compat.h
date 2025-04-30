@@ -5,7 +5,7 @@
 #include <gpiod.h>
 
 // Detect which API version we're using
-#if defined(GPIOD_VERSION_STR) || defined(GPIOD_API_VERSION)
+#if defined(GPIOD_EDGE_EVENT_RISING_EDGE) || defined(GPIOD_LINE_DIRECTION_INPUT)
     #define GPIO_USING_V2_API 1
 #else
     #define GPIO_USING_V1_API 1
