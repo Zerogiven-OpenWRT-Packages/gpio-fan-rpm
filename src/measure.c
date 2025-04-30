@@ -12,34 +12,53 @@
 // Perform measurements and optionally print output
 void perform_measurements(config_t *cfg, int skip_output)
 {
-    if (cfg->debug)
+    if (cfg->gpio_count <= 0)
     {
-        printf("[DEBUG] Starting edge-based measurement on %d GPIO(s)\n", cfg->gpio_count);
-        printf("[DEBUG] Duration: %d second(s)\n", cfg->duration);
-        printf("[DEBUG] Global pulses/rev: %d\n", cfg->pulses_per_rev);
-    }
-
-    // Apply pulses_per_rev to all gpio_info structs (if unset)
-    for (int i = 0; i < cfg->gpio_count; i++)
-    {
-        if (cfg->gpios[i].pulses_per_rev <= 0)
-            cfg->gpios[i].pulses_per_rev = cfg->pulses_per_rev;
-
-        if (cfg->debug)
-        {
-            printf("[DEBUG] GPIO %d → chip=%s, pulses/rev=%d\n",
-                   cfg->gpios[i].gpio_rel,
-                   cfg->gpios[i].chip,
-                   cfg->gpios[i].pulses_per_rev);
-        }
-    }
-
-    if (measure_rpm_edge(cfg->gpios, cfg->gpio_count, cfg->duration, cfg->debug) < 0)
-    {
-        fprintf(stderr, "Error: failed to measure RPM using edge events\n");
+        fprintf(stderr, "No GPIOs specified for measurement\n");
         return;
     }
 
+    // Find available GPIO chips if not specified
+    if (cfg->default_chip[0] == '\0')
+        detect_chip(cfg);
+
+    // Perform measurements for each configured GPIO
+    for (int i = 0; i < cfg->gpio_count; i++)
+    {
+        gpio_info_t *info = &cfg->gpios[i];
+        
+        // If no chip specified for this GPIO, use the default
+        if (info->chip[0] == '\0' && cfg->default_chip[0] != '\0')
+            strncpy(info->chip, cfg->default_chip, sizeof(info->chip) - 1);
+            
+        if (cfg->debug)
+            fprintf(stderr, "[DEBUG] Measuring GPIO %d on %s\n", info->gpio_rel, info->chip);
+            
+        // Use the edge detection method to measure RPM
+        float rpm = measure_rpm_edge(info->chip, info->gpio_rel, cfg->debug);
+        
+        if (rpm < 0)
+        {
+            // Measurement failed
+            info->valid = 0;
+            info->rpm = 0;
+            if (cfg->debug)
+                fprintf(stderr, "[DEBUG] Failed to measure RPM for GPIO %d on %s\n", 
+                        info->gpio_rel, info->chip);
+        }
+        else
+        {
+            // Store the measured RPM
+            info->valid = 1;
+            info->rpm = (int)(rpm + 0.5f); // Round to nearest integer
+            
+            if (cfg->debug)
+                fprintf(stderr, "[DEBUG] Measured RPM: %d for GPIO %d on %s\n", 
+                        info->rpm, info->gpio_rel, info->chip);
+        }
+    }
+
+    // Skip output if requested
     if (skip_output)
         return;
 

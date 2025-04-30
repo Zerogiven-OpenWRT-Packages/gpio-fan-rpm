@@ -6,6 +6,7 @@ PKG_RELEASE := 1
 
 PKG_MAINTAINER     := CSoellinger
 PKG_LICENSE        := GPL
+PKG_LICENSE_FILES  := LICENSE
 PKG_COPYRIGHT_YEAR := $(shell date +%Y)
 
 PKG_BUILD_DEPENDS := libgpiod libjson-c
@@ -15,15 +16,16 @@ include $(INCLUDE_DIR)/package.mk
 define Package/$(PKG_NAME)
   SECTION:=utils
   CATEGORY:=Utilities
-  TITLE:=GPIO Fan RPM Monitor
-  DEPENDS:=+libgpiod +libjson-c +libpthread
+  TITLE:=GPIO fan RPM measurement for OpenWRT
+  DEPENDS:=+libgpiod +libjson-c
   PKGARCH:=all
 endef
 
 define Package/$(PKG_NAME)/description
   gpio-fan-rpm measures fan speed (RPM) by counting GPIO edge events.
-  It uses libgpiod v2 with multithreaded edge detection and supports multiple GPIOs,
-  JSON/numeric/collectd outputs, and a warm-up phase for stable readings.
+  It supports both libgpiod v1 and v2 APIs for compatibility across OpenWRT
+  versions (23.05+ and 24.10+), with multithreaded edge detection and outputs
+  in various formats (JSON, collectd, numeric).
 endef
 
 # Enable pthread and link required libraries
@@ -33,19 +35,16 @@ TARGET_CFLAGS += -Wall -Wextra -pthread $(FPIC) \
   -DPKG_LICENSE=\"$(PKG_LICENSE)\" \
   -DPKG_COPYRIGHT_YEAR=\"$(PKG_COPYRIGHT_YEAR)\"
 TARGET_LDFLAGS += -pthread
-TARGET_LIBS := -ljson-c -lgpiod
+TARGET_LIBS := -lgpiod -ljson-c -lpthread
 
 define Build/Compile
 	$(MAKE) -C $(PKG_BUILD_DIR) \
-		CC="$(TARGET_CC)" \
-		CFLAGS="$(TARGET_CFLAGS)" \
-		LDFLAGS="$(TARGET_LDFLAGS)" \
-		LIB="$(TARGET_LIBS)"
+		CROSS="$(TARGET_CROSS)"
 endef
 
 define Package/$(PKG_NAME)/install
-	$(INSTALL_DIR) $(1)/usr/sbin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/gpio-fan-rpm $(1)/usr/sbin/gpio-fan-rpm
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/gpio-fan-rpm $(1)/usr/bin/
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
