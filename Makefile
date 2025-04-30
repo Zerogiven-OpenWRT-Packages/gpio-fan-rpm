@@ -22,9 +22,8 @@ endef
 
 define Package/$(PKG_NAME)/description
   gpio-fan-rpm measures fan speed (RPM) by counting GPIO edge events.
-  It supports both libgpiod v1 and v2 APIs for compatibility across OpenWRT
-  versions (23.05+ and 24.10+), with multithreaded edge detection and outputs
-  in various formats (JSON, collectd, numeric).
+  It uses libgpiod v2 with multithreaded edge detection and supports multiple GPIOs,
+  JSON/numeric/collectd outputs, and a warm-up phase for stable readings.
 endef
 
 # Enable pthread and link required libraries
@@ -34,7 +33,7 @@ TARGET_CFLAGS += -Wall -Wextra -pthread $(FPIC) \
   -DPKG_LICENSE=\"$(PKG_LICENSE)\" \
   -DPKG_COPYRIGHT_YEAR=\"$(PKG_COPYRIGHT_YEAR)\"
 TARGET_LDFLAGS += -pthread
-TARGET_LIBS := -lgpiod -ljson-c -lpthread
+TARGET_LIBS := -ljson-c -lgpiod
 
 define Build/Compile
 	$(MAKE) -C $(PKG_BUILD_DIR) \

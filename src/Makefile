@@ -3,8 +3,8 @@
 # Compiler and flags
 CC ?= gcc
 CFLAGS ?= -O2
-# The order of libraries matters for linking
-LIB = -lgpiod -ljson-c -lpthread
+# LIB ?= -ljson-c -lgpiod
+LIB ?= -lgpiod -ljson-c
 
 # Target executable name
 TARGET = gpio-fan-rpm

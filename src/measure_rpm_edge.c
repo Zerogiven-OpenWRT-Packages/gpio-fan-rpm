@@ -165,10 +165,7 @@ cleanup_v2:
 
 #else // --- Fallback to libgpiod v1 API ---
 
-#if defined(DEBUG)
-static const char v1_fallback_msg[] __attribute__((unused)) = 
-    "Note: Compiling with libgpiod v1 API fallback. GPIO bias settings might not be applied.";
-#endif
+#warning "Compiling with libgpiod v1 API fallback. GPIO bias settings might not be applied."
 
 // Define missing v1 API prototypes and structures
 struct gpiod_chip *gpiod_chip_open(const char *path);
