@@ -9,6 +9,14 @@
 
 // This file is specifically for v1 API (OpenWRT 23.05)
 
+// Define the v1 event structure if not provided by headers
+struct gpiod_line_event {
+    struct timespec ts;
+    int event_type;
+};
+#define GPIOD_LINE_EVENT_RISING_EDGE 1
+#define GPIOD_LINE_EVENT_FALLING_EDGE 2
+
 // Get a line handle from a chip
 struct gpiod_line *gpio_compat_get_line(struct gpiod_chip *chip, unsigned int offset)
 {
@@ -49,7 +57,7 @@ int gpio_compat_read_event(struct gpiod_line *line, struct gpio_compat_event *ev
     event->ts = v1_event.ts;
     
     // Convert event type to our constants
-    if (v1_event.event_type == 1) { // GPIOD_LINE_EVENT_RISING_EDGE in v1
+    if (v1_event.event_type == GPIOD_LINE_EVENT_RISING_EDGE) {
         event->event_type = GPIO_COMPAT_RISING_EDGE;
     } else {
         event->event_type = GPIO_COMPAT_FALLING_EDGE;
@@ -64,9 +72,12 @@ const char *gpio_compat_get_chip_path(struct gpiod_chip *chip)
     if (!chip) return NULL;
     
     static char path[128];
+    const char *name = gpiod_chip_name(chip);
     
-    // In v1 API we use a different approach since gpiod_chip_name may not exist
-    // We'll construct a path based on what we know
-    snprintf(path, sizeof(path), "/dev/gpiochip0");
+    if (name) {
+        snprintf(path, sizeof(path), "/dev/%s", name);
+    } else {
+        snprintf(path, sizeof(path), "/dev/gpiochip0");
+    }
     return path;
 }

@@ -1,40 +1,34 @@
 #ifndef GPIO_COMPAT_H
 #define GPIO_COMPAT_H
 
-#include <time.h>
 #include <gpiod.h>
 
-// Detect which API version we're using
-#if defined(GPIOD_EDGE_EVENT_RISING_EDGE) || defined(GPIOD_LINE_DIRECTION_INPUT)
-    #define GPIO_USING_V2_API 1
-#else
-    #define GPIO_USING_V1_API 1
-#endif
-
-// Simple compatibility structure for events
+// Event structure for compatibility layer
 struct gpio_compat_event {
-    struct timespec ts;
-    int event_type;
+    uint64_t timestamp;  // Timestamp in nanoseconds
+    int event_type;      // 1 = rising edge, 0 = falling edge
 };
 
-// Event type definitions
-#define GPIO_COMPAT_RISING_EDGE 1
-#define GPIO_COMPAT_FALLING_EDGE 2
-
-// Function declarations for our compatibility layer
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+// Get line from chip and offset
 struct gpiod_line *gpio_compat_get_line(struct gpiod_chip *chip, unsigned int offset);
-int gpio_compat_request_events(struct gpiod_line *line, const char *consumer, int falling_only);
-int gpio_compat_get_fd(struct gpiod_line *line);
+
+// Request events on a line (for edge detection)
+// direction: 0 = rising, 1 = falling, 2 = both
+int gpio_compat_request_events(struct gpiod_line *line, const char *consumer, int direction);
+
+// Release a line
 void gpio_compat_release_line(struct gpiod_line *line);
+
+// Get file descriptor for a line
+int gpio_compat_get_fd(struct gpiod_line *line);
+
+// Read an event from a line
 int gpio_compat_read_event(struct gpiod_line *line, struct gpio_compat_event *event);
+
+// Get chip path
 const char *gpio_compat_get_chip_path(struct gpiod_chip *chip);
 
-#ifdef __cplusplus
-}
-#endif
+// Get line value
+int gpio_compat_get_value(struct gpiod_line *line, int *success);
 
 #endif /* GPIO_COMPAT_H */
