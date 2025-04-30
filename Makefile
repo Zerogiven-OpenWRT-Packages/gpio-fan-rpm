@@ -4,8 +4,14 @@ PKG_NAME    := gpio-fan-rpm
 PKG_VERSION := 1.0.0
 PKG_RELEASE := 1
 
+PKG_SOURCE_PROTO := git
+PKG_SOURCE_URL := https://github.com/CSoellinger/gpio-fan-rpm.git
+PKG_SOURCE_VERSION := main
+PKG_MIRROR_HASH := skip
+
 PKG_MAINTAINER     := CSoellinger
 PKG_LICENSE        := GPL
+PKG_LICENSE_FILES  := LICENSE
 PKG_COPYRIGHT_YEAR := $(shell date +%Y)
 
 PKG_BUILD_DEPENDS := libgpiod libjson-c
@@ -15,16 +21,14 @@ include $(INCLUDE_DIR)/package.mk
 define Package/$(PKG_NAME)
   SECTION:=utils
   CATEGORY:=Utilities
-  TITLE:=GPIO Fan RPM Monitor
-  DEPENDS:=+libgpiod +libjson-c +libpthread
+  TITLE:=GPIO fan RPM measurement for OpenWRT
+  DEPENDS:=+libgpiod +libjson-c
   PKGARCH:=all
 endef
 
 define Package/$(PKG_NAME)/description
-  gpio-fan-rpm measures fan speed (RPM) by counting GPIO edge events.
-  It supports both libgpiod v1 and v2 APIs for compatibility across OpenWRT
-  versions (23.05+ and 24.10+), with multithreaded edge detection and outputs
-  in various formats (JSON, collectd, numeric).
+  Tool for measuring fan RPM using GPIO pins on OpenWRT devices.
+  Compatible with both libgpiod v1 (OpenWRT 23.05) and v2 (OpenWRT 24.10).
 endef
 
 # Enable pthread and link required libraries
@@ -36,18 +40,20 @@ TARGET_CFLAGS += -Wall -Wextra -pthread $(FPIC) \
 
 TARGET_LDFLAGS += -pthread 
 
-# Pass library search paths explicitly using standard OpenWRT variables
+# Detect OpenWRT version to select the right libgpiod API version
+# - 23.05 uses libgpiod v1
+# - 24.05+ uses libgpiod v2
 define Build/Compile
-	$(MAKE) -C $(PKG_BUILD_DIR) \
-		CC="$(TARGET_CC)" \
-		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include" \
-		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib" \
-		LIB="-lgpiod -ljson-c -lpthread"
+	@if [ "$(CONFIG_TARGET_KERNEL_VERSION)" \> "6.0.0" ]; then \
+		$(MAKE) -C $(PKG_BUILD_DIR)/src CROSS="$(TARGET_CROSS)" GPIOD_V2=1; \
+	else \
+		$(MAKE) -C $(PKG_BUILD_DIR)/src CROSS="$(TARGET_CROSS)" GPIOD_V2=0; \
+	fi
 endef
 
 define Package/$(PKG_NAME)/install
-	$(INSTALL_DIR) $(1)/usr/sbin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/gpio-fan-rpm $(1)/usr/sbin/gpio-fan-rpm
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/gpio-fan-rpm $(1)/usr/bin/
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
