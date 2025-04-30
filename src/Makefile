@@ -1,25 +1,27 @@
-# Makefile for gpio-fan-rpm
+# Makefile for gpio-fan-rpm (modular build)
 
 # Compiler and flags
-CC=$(CROSS)gcc
-CFLAGS+=-Wall -Wextra -pthread
-LDFLAGS+=-pthread
-LDLIBS=-lgpiod -ljson-c -lpthread
+CC ?= gcc
+CFLAGS ?= -O2
+# The order of libraries matters for linking
+LIB = -lgpiod -ljson-c -lpthread
 
-# Sources and objects
-SOURCES=gpio-fan-rpm.c args.c gpio.c measure.c gpio-detect.c measure_rpm_edge.c
-OBJECTS=$(SOURCES:.c=.o)
-TARGET=gpio-fan-rpm
+# Target executable name
+TARGET = gpio-fan-rpm
 
-.PHONY: all clean
+# Source files (modular)
+SRCS = gpio-fan-rpm.c args.c gpio.c measure.c gpio-detect.c measure_rpm_edge.c gpiod_compat.c
+
+# Object files
+OBJS = $(SRCS:.c=.o)
 
 all: $(TARGET)
 
-$(TARGET): $(OBJECTS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJECTS) $(LDLIBS)
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $(LIB)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -f $(OBJS) $(TARGET)
