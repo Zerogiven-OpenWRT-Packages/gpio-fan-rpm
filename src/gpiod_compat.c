@@ -10,7 +10,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
-#include "gpiod_compat.h" // Include our compat header first
+#include "gpiod_compat.h"
 
 // Only include compatibility functions when using libgpiod v2
 #ifdef USING_LIBGPIOD_V2
@@ -25,7 +25,14 @@ typedef struct {
     int in_use;
 } line_cache_t;
 
+// Our fake line handle structure
+typedef struct {
+    struct gpiod_chip *chip;
+    unsigned int offset;
+} fake_line_t;
+
 static line_cache_t line_cache[MAX_LINE_CACHE] = {0};
+static fake_line_t fake_lines[MAX_LINE_CACHE] = {0};
 
 // Helper to find or allocate a line cache entry
 static line_cache_t *get_line_cache(struct gpiod_line *line) {
@@ -57,15 +64,6 @@ struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int off
         return NULL;
     }
 
-    // In v2, we don't have direct line handles, so we create a "fake" handle
-    // that's just a pointer to an opaque structure with the chip and offset
-    typedef struct {
-        struct gpiod_chip *chip;
-        unsigned int offset;
-    } fake_line_t;
-    
-    static fake_line_t fake_lines[MAX_LINE_CACHE] = {0};
-
     // Find a free slot
     for (int i = 0; i < MAX_LINE_CACHE; i++) {
         if (fake_lines[i].chip == NULL) {
@@ -86,12 +84,6 @@ static int request_line_events(struct gpiod_line *line, const char *consumer, in
         return -1;
     }
 
-    // Extract chip and offset from our fake line handle
-    typedef struct {
-        struct gpiod_chip *chip;
-        unsigned int offset;
-    } fake_line_t;
-    
     fake_line_t *line_handle = (fake_line_t *)line;
     struct gpiod_chip *chip = line_handle->chip;
     unsigned int offset = line_handle->offset;
@@ -281,13 +273,66 @@ void gpiod_line_release(struct gpiod_line *line) {
     cache->in_use = 0;
 
     // Clean up fake line handle
-    typedef struct {
-        struct gpiod_chip *chip;
-        unsigned int offset;
-    } fake_line_t;
-    
     fake_line_t *line_handle = (fake_line_t *)line;
     line_handle->chip = NULL;
+}
+
+// v1 API: Get line value
+int gpiod_line_get_value(struct gpiod_line *line) {
+    if (!line) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    fake_line_t *line_handle = (fake_line_t *)line;
+    struct gpiod_chip *chip = line_handle->chip;
+    unsigned int offset = line_handle->offset;
+
+    // First check if there's an existing request in the cache
+    line_cache_t *cache = get_line_cache(line);
+    if (cache && cache->request) {
+        return gpiod_line_request_get_value(cache->request, 0);
+    }
+
+    // Otherwise set up a temporary line request to read the value
+    struct gpiod_line_settings *settings = gpiod_line_settings_new();
+    struct gpiod_line_config *line_cfg = gpiod_line_config_new();
+    struct gpiod_request_config *req_cfg = gpiod_request_config_new();
+    struct gpiod_line_request *request = NULL;
+    int value = -1;
+
+    if (!settings || !line_cfg || !req_cfg) {
+        errno = ENOMEM;
+        if (settings) gpiod_line_settings_free(settings);
+        if (line_cfg) gpiod_line_config_free(line_cfg);
+        if (req_cfg) gpiod_request_config_free(req_cfg);
+        return -1;
+    }
+
+    // Configure for input
+    gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_INPUT);
+
+    gpiod_line_config_add_line_settings(line_cfg, &offset, 1, settings);
+    gpiod_request_config_set_consumer(req_cfg, "gpiod_compat_get_value");
+
+    request = gpiod_chip_request_lines(chip, req_cfg, line_cfg);
+    if (!request) {
+        gpiod_line_settings_free(settings);
+        gpiod_line_config_free(line_cfg);
+        gpiod_request_config_free(req_cfg);
+        return -1;
+    }
+
+    // Read the value
+    value = gpiod_line_request_get_value(request, 0);
+
+    // Clean up
+    gpiod_line_request_release(request);
+    gpiod_line_settings_free(settings);
+    gpiod_line_config_free(line_cfg);
+    gpiod_request_config_free(req_cfg);
+    
+    return value;
 }
 
 #endif // USING_LIBGPIOD_V2

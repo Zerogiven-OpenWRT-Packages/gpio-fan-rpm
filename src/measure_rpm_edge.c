@@ -1,4 +1,6 @@
 // measure_rpm_edge.c
+// RPM measurement using edge detection with libgpiod v1/v2 compatibility
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,9 +8,10 @@
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
-#include "gpiod_compat.h"  // Include our compatibility layer first
 #include <pthread.h>
 
+// Include our compatibility layer first for proper definitions
+#include "gpiod_compat.h"
 #include "gpio-fan-rpm.h"
 
 // Edge-based RPM measurement with support for both libgpiod APIs
@@ -34,7 +37,10 @@ static void *edge_measure_thread(void *arg)
     }
 
 #ifdef USING_LIBGPIOD_V2
-    // libgpiod v2 native approach
+    // Native approach with V2 API
+    if (args->debug)
+        fprintf(stderr, "[DEBUG] GPIO %d: Using native libgpiod v2 API\n", info->gpio_rel);
+    
     struct gpiod_line_settings *settings = gpiod_line_settings_new();
     struct gpiod_line_config *line_cfg = gpiod_line_config_new();
     struct gpiod_request_config *req_cfg = gpiod_request_config_new();
@@ -80,7 +86,10 @@ static void *edge_measure_thread(void *arg)
         return NULL;
     }
 #else
-    // libgpiod v1 approach
+    // Using v1 API (or compat layer in v2)
+    if (args->debug)
+        fprintf(stderr, "[DEBUG] GPIO %d: Using libgpiod v1 API\n", info->gpio_rel);
+        
     struct gpiod_line *line = gpiod_chip_get_line(chip, info->gpio_rel);
     if (!line) {
         fprintf(stderr, "[ERROR] Failed to get GPIO line %d: %s\n", 
@@ -220,7 +229,7 @@ int measure_rpm_edge(gpio_info_t *infos, int count, int duration, int debug)
 
     if (debug) {
 #ifdef USING_LIBGPIOD_V2
-        fprintf(stderr, "[DEBUG] Using libgpiod v2 API\n");
+        fprintf(stderr, "[DEBUG] Using libgpiod v2 API with compat layer\n");
 #else
         fprintf(stderr, "[DEBUG] Using libgpiod v1 API\n");
 #endif
