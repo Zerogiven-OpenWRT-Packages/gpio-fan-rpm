@@ -9,29 +9,14 @@
 #define GPIOD_COMPAT_H
 
 #include <gpiod.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <time.h>
 
-// Detect libgpiod version at compile time (from headers)
-// Use the same detection logic already in gpio.c
+// Detect libgpiod version at compile time
 #if defined(GPIOD_VERSION_STR) || defined(GPIOD_API_VERSION)
-    // We're building with libgpiod v2 headers
+    // We have libgpiod v2 headers
     #define USING_LIBGPIOD_V2 1
     
-    #ifdef DEBUG
-    #pragma message "Compiling with libgpiod v2 headers"
-    #endif
-    
-    // Make sure v1 event constants are defined for code that might use them
-    #ifndef GPIOD_LINE_EVENT_RISING_EDGE
-        #define GPIOD_LINE_EVENT_RISING_EDGE GPIOD_EDGE_EVENT_RISING_EDGE
-    #endif
-    #ifndef GPIOD_LINE_EVENT_FALLING_EDGE
-        #define GPIOD_LINE_EVENT_FALLING_EDGE GPIOD_EDGE_EVENT_FALLING_EDGE
-    #endif
-    
-    // Add structure definitions for v1 compatibility
+    // Define the v1 event structure for compatibility
     #ifndef GPIOD_LINE_EVENT_DEFINED
         #define GPIOD_LINE_EVENT_DEFINED
         struct gpiod_line_event {
@@ -40,15 +25,27 @@
         };
     #endif
     
-#else
-    // We're building with libgpiod v1 headers (or earlier)
-    #define USING_LIBGPIOD_V1 1
-    
-    #ifdef DEBUG
-    #pragma message "Compiling with libgpiod v1 headers"
+    // Define v1 constants based on v2 constants
+    #ifndef GPIOD_LINE_EVENT_RISING_EDGE
+        #define GPIOD_LINE_EVENT_RISING_EDGE 1
+    #endif
+    #ifndef GPIOD_LINE_EVENT_FALLING_EDGE
+        #define GPIOD_LINE_EVENT_FALLING_EDGE 2
     #endif
     
-    // Define v2 constants for v1 code
+    // Prototype forward declarations for v1 compatibility functions
+    // These will be implemented in gpiod_compat.c
+    struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int offset);
+    int gpiod_line_request_both_edges_events(struct gpiod_line *line, const char *consumer);
+    int gpiod_line_request_falling_edge_events(struct gpiod_line *line, const char *consumer);
+    int gpiod_line_event_get_fd(struct gpiod_line *line);
+    int gpiod_line_event_read(struct gpiod_line *line, struct gpiod_line_event *event);
+    void gpiod_line_release(struct gpiod_line *line);
+#else
+    // We have libgpiod v1 headers
+    #define USING_LIBGPIOD_V1 1
+    
+    // Define v2 constants for code that might use them
     #ifndef GPIOD_LINE_EDGE_RISING
         #define GPIOD_LINE_EDGE_RISING 1
     #endif
@@ -59,53 +56,12 @@
         #define GPIOD_LINE_EDGE_BOTH 3
     #endif
     
-    // Add v2 types as dummy types
-    #ifndef GPIOD_EDGE_EVENT_BUFFER_DEFINED
-        #define GPIOD_EDGE_EVENT_BUFFER_DEFINED
-        struct gpiod_edge_event_buffer { void *opaque; };
-        struct gpiod_edge_event { struct timespec ts; int event_type; unsigned int line_offset; };
+    // v2 structure types needed for v1 code
+    #ifndef GPIOD_LINE_DIRECTION_INPUT
+        #define GPIOD_LINE_DIRECTION_INPUT 1
     #endif
-    
-    // v2 API structure placeholders
-    #ifndef GPIOD_LINE_SETTINGS_DEFINED
-        #define GPIOD_LINE_SETTINGS_DEFINED
-        struct gpiod_line_settings { void *opaque; };
-        struct gpiod_line_config { void *opaque; };
-        struct gpiod_request_config { void *opaque; };
-        struct gpiod_line_request { void *opaque; };
-    #endif
-    
-    // Stubs for v2 functions when compiling with v1
-    static inline struct gpiod_line_settings *gpiod_line_settings_new(void) { return NULL; }
-    static inline void gpiod_line_settings_free(struct gpiod_line_settings *settings) { (void)settings; }
-    static inline int gpiod_line_settings_set_direction(struct gpiod_line_settings *settings, int direction) { (void)settings; (void)direction; return -1; }
-    static inline int gpiod_line_settings_set_edge_detection(struct gpiod_line_settings *settings, int edge) { (void)settings; (void)edge; return -1; }
-    static inline int gpiod_line_settings_set_bias(struct gpiod_line_settings *settings, int bias) { (void)settings; (void)bias; return -1; }
-    static inline struct gpiod_line_config *gpiod_line_config_new(void) { return NULL; }
-    static inline void gpiod_line_config_free(struct gpiod_line_config *config) { (void)config; }
-    static inline int gpiod_line_config_add_line_settings(struct gpiod_line_config *config, const unsigned int *offsets, unsigned int num_offsets, struct gpiod_line_settings *settings) { (void)config; (void)offsets; (void)num_offsets; (void)settings; return -1; }
-    static inline struct gpiod_request_config *gpiod_request_config_new(void) { return NULL; }
-    static inline void gpiod_request_config_free(struct gpiod_request_config *config) { (void)config; }
-    static inline int gpiod_request_config_set_consumer(struct gpiod_request_config *config, const char *consumer) { (void)config; (void)consumer; return -1; }
-    static inline struct gpiod_line_request *gpiod_chip_request_lines(struct gpiod_chip *chip, struct gpiod_request_config *req_cfg, struct gpiod_line_config *line_cfg) { (void)chip; (void)req_cfg; (void)line_cfg; return NULL; }
-    static inline void gpiod_line_request_release(struct gpiod_line_request *request) { (void)request; }
-    static inline int gpiod_line_request_get_fd(struct gpiod_line_request *request) { (void)request; return -1; }
-    static inline int gpiod_line_request_get_value(struct gpiod_line_request *request, unsigned int offset) { (void)request; (void)offset; return -1; }
-    static inline struct gpiod_edge_event_buffer *gpiod_edge_event_buffer_new(size_t capacity) { (void)capacity; return NULL; }
-    static inline void gpiod_edge_event_buffer_free(struct gpiod_edge_event_buffer *buffer) { (void)buffer; }
-    static inline int gpiod_line_request_read_edge_events(struct gpiod_line_request *request, struct gpiod_edge_event_buffer *buffer, size_t max_events) { (void)request; (void)buffer; (void)max_events; return -1; }
-    // For v2 compatibility, define functions to get edge event information
-    static inline struct gpiod_edge_event *gpiod_edge_event_buffer_get_event(struct gpiod_edge_event_buffer *buffer, unsigned int idx) { (void)buffer; (void)idx; return NULL; }
-    static inline struct timespec gpiod_edge_event_get_timestamp(struct gpiod_edge_event *event) { struct timespec ts = {0, 0}; (void)event; return ts; }
-    static inline int gpiod_edge_event_get_event_type(struct gpiod_edge_event *event) { (void)event; return -1; }
-#endif
-
-// For debugging - print which version we're using
-#ifdef DEBUG
-    #if defined(USING_LIBGPIOD_V2)
-        #pragma message "Using libgpiod v2 API"
-    #elif defined(USING_LIBGPIOD_V1)
-        #pragma message "Using libgpiod v1 API"
+    #ifndef GPIOD_LINE_BIAS_PULL_UP
+        #define GPIOD_LINE_BIAS_PULL_UP 2 
     #endif
 #endif
 
