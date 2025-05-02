@@ -98,11 +98,16 @@ int main(int argc, char **argv) {
         a->debug = debug;
         a->watch = watch;
         a->mode = mode;
-        pthread_create(&threads[i], NULL, thread_fn, a);
+        int ret = pthread_create(&threads[i], NULL, thread_fn, a);
+        if (ret) {
+            fprintf(stderr, "Error: cannot create thread for GPIO %d: %s\n", a->gpio, strerror(ret));
+            free(a);
+            threads[i] = 0;
+        }
     }
     // Wait for threads to finish
     for (size_t i = 0; i < ngpio; i++) {
-        pthread_join(threads[i], NULL);
+        if (threads[i]) pthread_join(threads[i], NULL);
     }
     free(threads);
     free(gpios);

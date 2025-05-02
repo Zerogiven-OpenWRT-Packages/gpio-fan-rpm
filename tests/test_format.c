@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "../src/gpio-fan-rpm.h"
+#include "../src/format.h"
 
 int main(void) {
     // Numeric formatting
@@ -11,10 +11,11 @@ int main(void) {
     assert(strcmp(num, "1235\n") == 0);
     free(num);
 
-    // JSON formatting
-    char *j = format_json(12.34);
+    // JSON formatting with GPIO identifier
+    int test_gpio = 3;
+    char *j = format_json(test_gpio, 12.34);
     assert(j != NULL);
-    assert(strcmp(j, "{\"rpm\":12.34}\n") == 0);
+    assert(strcmp(j, "{\"gpio\":3,\"rpm\":12.34}\n") == 0);
     free(j);
 
     printf("All format tests passed.\n");

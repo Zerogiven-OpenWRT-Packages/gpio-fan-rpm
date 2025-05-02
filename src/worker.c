@@ -8,6 +8,7 @@
 #include <gpiod.h>
 #include <pthread.h>
 #include "worker.h"
+#include "format.h"
 
 // Shared stop flag set by SIGINT
 volatile int stop = 0;
@@ -110,22 +111,22 @@ void *thread_fn(void *arg) {
         double rpm = measure_rpm(line, a->pulses, a->duration, a->debug);
         pthread_mutex_lock(&print_mutex);
         switch (a->mode) {
-        case MODE_NUMERIC:
-            printf("GPIO%u: %.0f\n", a->gpio, rpm);
+        case MODE_NUMERIC: {
+            char *s = format_numeric(rpm);
+            printf("GPIO%u: %s", a->gpio, s);
+            free(s);
             break;
+        }
         case MODE_JSON: {
-            json_object *j = json_object_new_object();
-            json_object_object_add(j, "gpio", json_object_new_int(a->gpio));
-            json_object_object_add(j, "rpm", json_object_new_double(rpm));
-            printf("%s\n", json_object_to_json_string_ext(j, JSON_C_TO_STRING_PLAIN));
-            json_object_put(j);
+            char *s = format_json_full(a->gpio, rpm);
+            printf("%s", s);
+            free(s);
             break;
         }
         case MODE_COLLECTD: {
-            char host[256];
-            gethostname(host, sizeof(host));
-            printf("PUTVAL \"%s/gpio-fan-%d/gauge-fan\" interval=%d N:%.0f\n",
-                   host, a->gpio, a->duration, rpm);
+            char *s = format_collectd(a->gpio, rpm, a->duration);
+            printf("%s", s);
+            free(s);
             break;
         }
         default:
