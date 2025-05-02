@@ -1,7 +1,5 @@
-#ifndef GPIO_FAN_RPM_H
-#define GPIO_FAN_RPM_H
-
-#include <json-c/json.h>
+#ifndef FORMAT_H
+#define FORMAT_H
 
 // Format RPM as numeric string (with newline)
 char* format_numeric(double rpm);
@@ -9,4 +7,4 @@ char* format_numeric(double rpm);
 // Format RPM as JSON string (with newline)
 char* format_json(double rpm);
 
-#endif // GPIO_FAN_RPM_H
+#endif // FORMAT_H
