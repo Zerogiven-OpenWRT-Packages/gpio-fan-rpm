@@ -8,7 +8,11 @@
 #include "format.h"
 
 #ifndef PKG_TAG
-#define PKG_TAG "unknown"
+#define PKG_TAG_STR "unknown"
+#else
+#define _STR(x) #x
+#define STR(x) _STR(x)
+#define PKG_TAG_STR STR(PKG_TAG)
 #endif
 
 static void usage(const char *prog) {
@@ -75,7 +79,7 @@ int main(int argc, char **argv) {
         case 'D': debug = 1; break;
         case 'w': watch = 1; break;
         case 'h': usage(argv[0]); return 0;
-        case 'v': printf("%s %s\n", argv[0], PKG_TAG); return 0;
+        case 'v': printf("%s %s\n", argv[0], PKG_TAG_STR); return 0;
         case 0: break;
         default: usage(argv[0]); return 1;
         }

@@ -31,7 +31,7 @@ gpio-fan-rpm [options]
 | Option             | Description                               |
 | ------------------ | ----------------------------------------- |
 | `--gpio=N`, `-g N` | GPIO number to measure (relative to chip) |
-| `--chip=NAME`      | GPIO chip name (default: `gpiochip0`)     |
+| `--chip=NAME`      | GPIO chip name (default: auto-detect across gpiochip0..9) |
 | `--duration=SEC`   | Total measurement duration (default: `2`) |
 | `--pulses=N`       | Pulses per revolution (default: `2`)      |
 | `--numeric`        | Output RPM values only (one per line)     |
