@@ -3,7 +3,6 @@
 
 #include <gpiod.h>
 #include <pthread.h>
-#include <json-c/json.h>
 
 enum output_mode { MODE_DEFAULT, MODE_NUMERIC, MODE_JSON, MODE_COLLECTD };
 
@@ -15,7 +14,7 @@ struct thread_args {
     int pulses;
     int debug;
     int watch;
-    enum output_mode mode;
+    int mode;
 };
 
 // Measure RPM on a line

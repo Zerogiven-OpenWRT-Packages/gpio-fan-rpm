@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
     int duration = 2, pulses = 2;
     char *chipname = NULL;
     int debug = 0, watch = 0;
-    enum output_mode mode = MODE_DEFAULT;
+    int mode = MODE_DEFAULT;
     int *gpios = NULL;
     size_t ngpio = 0;
     int opt;
