@@ -1,8 +1,8 @@
 #ifndef WORKER_H
 #define WORKER_H
 
-#include <gpiod.h>
 #include <pthread.h>
+#include <gpiod.h>
 
 enum output_mode { MODE_DEFAULT, MODE_NUMERIC, MODE_JSON, MODE_COLLECTD };
 
@@ -16,9 +16,6 @@ struct thread_args {
     int watch;
     int mode;
 };
-
-// Measure RPM on a line
-double measure_rpm(struct gpiod_line *line, int pulses_per_rev, int duration, int debug);
 
 // Auto-open gpiochip for given line
 struct gpiod_chip *auto_open_chip(int gpio);

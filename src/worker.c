@@ -10,6 +10,18 @@
 #include "worker.h"
 #include "format.h"
 
+// Workaround for missing prototypes in some libgpiod headers
+extern int gpiod_line_event_wait(struct gpiod_line *line, struct timespec *timeout);
+extern int gpiod_line_event_read(struct gpiod_line *line, struct gpiod_line_event *event);
+extern struct gpiod_chip *gpiod_chip_open_by_name(const char *name);
+extern struct gpiod_line *gpiod_chip_get_line(struct gpiod_chip *chip, unsigned int offset);
+extern void gpiod_chip_close(struct gpiod_chip *chip);
+#ifdef GPIOD_LINE_REQUEST_EVENT_BOTH_EDGES
+// v2 request API already in gpiod.h
+#else
+extern int gpiod_line_request_both_edges_events(struct gpiod_line *line, const char *consumer);
+#endif
+
 // Shared stop flag set by SIGINT
 volatile int stop = 0;
 
@@ -23,8 +35,8 @@ pthread_mutex_t print_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define REQUEST_BOTH_EDGES(line, consumer) gpiod_line_request_both_edges_events(line, consumer)
 #endif
 
-// Measure RPM on a line
-double measure_rpm(struct gpiod_line *line, int pulses_per_rev, int duration, int debug) {
+// Measure RPM on a line (internal)
+static double measure_rpm(struct gpiod_line *line, int pulses_per_rev, int duration, int debug) {
     struct timespec start_ts, ev_ts;
     unsigned int count = 0;
     int half = duration / 2;
@@ -118,7 +130,7 @@ void *thread_fn(void *arg) {
             break;
         }
         case MODE_JSON: {
-            char *s = format_json_full(a->gpio, rpm);
+            char *s = format_json(a->gpio, rpm);
             printf("%s", s);
             free(s);
             break;
