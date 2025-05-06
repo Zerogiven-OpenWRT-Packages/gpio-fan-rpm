@@ -1,12 +1,10 @@
 #ifndef WORKER_H
 #define WORKER_H
 
-#include <gpiod.h>
 #include <pthread.h>
 
 enum output_mode { MODE_DEFAULT, MODE_NUMERIC, MODE_JSON, MODE_COLLECTD };
 
-// Arguments for each measurement thread
 struct thread_args {
     int gpio;
     char *chipname;
@@ -17,16 +15,11 @@ struct thread_args {
     int mode;
 };
 
-// Auto-open gpiochip for given line (returns gpiod_chip*)
-struct gpiod_chip *auto_open_chip(int gpio);
-
-// Thread function: performs measurement and prints output
+// Thread entry: measurement per GPIO
 void *thread_fn(void *arg);
 
-// Shared stop flag set by SIGINT
+// Globals
 extern volatile int stop;
-
-// Mutex to serialize output
 extern pthread_mutex_t print_mutex;
 
 #endif // WORKER_H
