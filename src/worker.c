@@ -1,15 +1,4 @@
-#if defined(__has_include)
-#  if __has_include(<gpiod.h>)
-#    include <gpiod.h>
-#  elif __has_include(<gpiod/gpiod.h>)
-#    include <gpiod/gpiod.h>
-#  else
-#    error "libgpiod header not found"
-#  endif
-#else
-#  include <gpiod.h>
-#endif
-
+#include <gpiod.h>
 #include <json-c/json.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -37,7 +26,7 @@ pthread_mutex_t print_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 // Measure RPM on a line (internal)
-static double measure_rpm(gpiod_line *line, int pulses_per_rev, int duration, int debug) {
+static double measure_rpm(struct gpiod_line *line, int pulses_per_rev, int duration, int debug) {
     struct timespec start_ts, ev_ts;
     unsigned int count = 0;
     int half = duration / 2;
@@ -70,9 +59,9 @@ static double measure_rpm(gpiod_line *line, int pulses_per_rev, int duration, in
 }
 
 // Auto-open gpiochip for given line (tries gpiochip0..9)
-static gpiod_chip *auto_open_chip(int gpio) {
+static struct gpiod_chip *auto_open_chip(int gpio) {
     char name[16];
-    gpiod_chip *c;
+    struct gpiod_chip *c;
     for (int i = 0; i < 10; i++) {
         snprintf(name, sizeof(name), "gpiochip%d", i);
         c = gpiod_chip_open_by_name(name);
@@ -86,7 +75,7 @@ static gpiod_chip *auto_open_chip(int gpio) {
 // Thread entry: opens line, performs warmup/measurement, prints results
 void *thread_fn(void *arg) {
     struct thread_args *a = arg;
-    gpiod_chip *chip;
+    struct gpiod_chip *chip;
     if (a->chipname) {
         chip = gpiod_chip_open_by_name(a->chipname);
     } else {
@@ -99,7 +88,7 @@ void *thread_fn(void *arg) {
         free(a);
         return NULL;
     }
-    gpiod_line *line = gpiod_chip_get_line(chip, a->gpio);
+    struct gpiod_line *line = gpiod_chip_get_line(chip, a->gpio);
     if (!line) {
         pthread_mutex_lock(&print_mutex);
         fprintf(stderr, "Error: cannot get line %d\n", a->gpio);
@@ -145,6 +134,7 @@ void *thread_fn(void *arg) {
         default:
             printf("GPIO%u: RPM: %.0f\n", a->gpio, rpm);
             break;
+        }
         }
         fflush(stdout);
         pthread_mutex_unlock(&print_mutex);

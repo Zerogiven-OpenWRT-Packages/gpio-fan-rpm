@@ -17,7 +17,7 @@ struct thread_args {
     int mode;
 };
 
-// Auto-open gpiochip for given line
+// Auto-open gpiochip for given line (returns gpiod_chip*)
 struct gpiod_chip *auto_open_chip(int gpio);
 
 // Thread function: performs measurement and prints output
