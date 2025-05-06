@@ -1,12 +1,23 @@
+#if defined(__has_include)
+#  if __has_include(<gpiod.h>)
+#    include <gpiod.h>
+#  elif __has_include(<gpiod/gpiod.h>)
+#    include <gpiod/gpiod.h>
+#  else
+#    error "libgpiod header not found"
+#  endif
+#else
+#  include <gpiod.h>
+#endif
+
+#include <json-c/json.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
 #include <errno.h>
-#include <json-c/json.h>
-#include <gpiod.h>
-#include <pthread.h>
 #include "worker.h"
 #include "format.h"
 
@@ -18,13 +29,15 @@ pthread_mutex_t print_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Detect libgpiod v2 vs v1
 #ifdef GPIOD_LINE_REQUEST_EVENT_BOTH_EDGES
-#define REQUEST_BOTH_EDGES(line, consumer) gpiod_line_request(line, GPIOD_LINE_REQUEST_EVENT_BOTH_EDGES, consumer)
+#define REQUEST_BOTH_EDGES(line, consumer) \
+    gpiod_line_request(line, GPIOD_LINE_REQUEST_EVENT_BOTH_EDGES, consumer)
 #else
-#define REQUEST_BOTH_EDGES(line, consumer) gpiod_line_request_both_edges_events(line, consumer)
+#define REQUEST_BOTH_EDGES(line, consumer) \
+    gpiod_line_request_both_edges_events(line, consumer)
 #endif
 
 // Measure RPM on a line (internal)
-static double measure_rpm(struct gpiod_line *line, int pulses_per_rev, int duration, int debug) {
+static double measure_rpm(gpiod_line *line, int pulses_per_rev, int duration, int debug) {
     struct timespec start_ts, ev_ts;
     unsigned int count = 0;
     int half = duration / 2;
@@ -57,9 +70,9 @@ static double measure_rpm(struct gpiod_line *line, int pulses_per_rev, int durat
 }
 
 // Auto-open gpiochip for given line (tries gpiochip0..9)
-struct gpiod_chip *auto_open_chip(int gpio) {
+static gpiod_chip *auto_open_chip(int gpio) {
     char name[16];
-    struct gpiod_chip *c;
+    gpiod_chip *c;
     for (int i = 0; i < 10; i++) {
         snprintf(name, sizeof(name), "gpiochip%d", i);
         c = gpiod_chip_open_by_name(name);
@@ -73,7 +86,7 @@ struct gpiod_chip *auto_open_chip(int gpio) {
 // Thread entry: opens line, performs warmup/measurement, prints results
 void *thread_fn(void *arg) {
     struct thread_args *a = arg;
-    struct gpiod_chip *chip;
+    gpiod_chip *chip;
     if (a->chipname) {
         chip = gpiod_chip_open_by_name(a->chipname);
     } else {
@@ -86,7 +99,7 @@ void *thread_fn(void *arg) {
         free(a);
         return NULL;
     }
-    struct gpiod_line *line = gpiod_chip_get_line(chip, a->gpio);
+    gpiod_line *line = gpiod_chip_get_line(chip, a->gpio);
     if (!line) {
         pthread_mutex_lock(&print_mutex);
         fprintf(stderr, "Error: cannot get line %d\n", a->gpio);

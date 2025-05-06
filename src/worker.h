@@ -1,8 +1,8 @@
 #ifndef WORKER_H
 #define WORKER_H
 
-#include <pthread.h>
 #include <gpiod.h>
+#include <pthread.h>
 
 enum output_mode { MODE_DEFAULT, MODE_NUMERIC, MODE_JSON, MODE_COLLECTD };
 
