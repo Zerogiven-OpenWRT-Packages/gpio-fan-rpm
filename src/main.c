@@ -1,121 +1,97 @@
+/**
+ * @file main.c
+ * @brief Main entry point for gpio-fan-rpm utility
+ * @author CSoellinger
+ * @date 2025
+ * @license GPL-3.0-only
+ * 
+ * This module orchestrates the RPM measurement process by parsing arguments,
+ * setting up signal handling, and delegating to appropriate measurement modules.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <getopt.h>
 #include <signal.h>
-#include "worker.h"
-#include "format.h"
+#include <pthread.h>
+#include "gpio.h"
+#include "args.h"
+#include "watch.h"
+#include "measure.h"
 
-#ifndef PKG_TAG
-#define PKG_TAG_STR "unknown"
-#else
-#define _STR(x) #x
-#define STR(x) _STR(x)
-#define PKG_TAG_STR STR(PKG_TAG)
-#endif
+// Global variables
+volatile int stop = 0;
+pthread_mutex_t print_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static void usage(const char *prog) {
-    printf("Usage: %s [options]\n"
-           "Options:\n"
-           "  --gpio=N, -g N         GPIO number to measure (can be repeated)\n"
-           "  --chip=NAME, -c NAME   GPIO chip (default: auto-detect per GPIO)\n"
-           "  --duration=SEC, -d SEC Duration to measure (default: 2)\n"
-           "  --pulses=N, -p N       Pulses per revolution (default: 2)\n"
-           "  --numeric              Output RPM as numeric only\n"
-           "  --json                 Output as JSON\n"
-           "  --collectd             Output in collectd PUTVAL format\n"
-           "  --debug                Show debug output\n"
-           "  --watch, -w            Repeat measurements continuously\n"
-           "  --help, -h             Show this help\n"
-           "  --version, -v          Show version information\n"
-           "\n"
-           "Note:\n"
-           "  The --duration value is internally split into two phases:\n"
-           "    • Warmup phase:      duration / 2 (no output)\n"
-           "    • Measurement phase: duration / 2 (output shown)\n"
-           "  In --watch mode, the warmup is only performed once (before the loop).\n"
-           "  Each loop iteration then only uses duration / 2 for measurement.\n",
-           prog);
-}
-
-// SIGINT handler: set stop flag for worker threads
+/**
+ * @brief Signal handler for graceful shutdown
+ * 
+ * @param sig Signal number
+ */
 static void sigint_handler(int sig) {
     (void)sig;
     stop = 1;
 }
 
+/**
+ * @brief Main function
+ * 
+ * @param argc Argument count
+ * @param argv Argument vector
+ * @return int Exit code
+ */
 int main(int argc, char **argv) {
     int duration = 2, pulses = 2;
     char *chipname = NULL;
     int debug = 0, watch = 0;
-    // Store output mode with getopt_long by using an int
-    int mode = MODE_DEFAULT;
+    output_mode_t mode = MODE_DEFAULT;
     int *gpios = NULL;
     size_t ngpio = 0;
-    int opt;
-    struct option longopts[] = {
-        {"gpio", required_argument, 0, 'g'},
-        {"chip", required_argument, 0, 'c'},
-        {"duration", required_argument, 0, 'd'},
-        {"pulses", required_argument, 0, 'p'},
-        {"numeric", no_argument, &mode, MODE_NUMERIC},
-        {"json", no_argument, &mode, MODE_JSON},
-        {"collectd", no_argument, &mode, MODE_COLLECTD},
-        {"debug", no_argument, 0, 'D'},
-        {"watch", no_argument, 0, 'w'},
-        {"help", no_argument, 0, 'h'},
-        {"version", no_argument, 0, 'v'},
-        {0,0,0,0}
-    };
-    while ((opt = getopt_long(argc, argv, "g:c:d:p:Dwhv", longopts, NULL)) != -1) {
-        switch (opt) {
-        case 'g':
-            gpios = realloc(gpios, (ngpio+1)*sizeof(*gpios));
-            gpios[ngpio++] = atoi(optarg);
-            break;
-        case 'c': chipname = strdup(optarg); break;
-        case 'd': duration = atoi(optarg); break;
-        case 'p': pulses = atoi(optarg); break;
-        case 'D': debug = 1; break;
-        case 'w': watch = 1; break;
-        case 'h': usage(argv[0]); return 0;
-        case 'v': printf("%s %s\n", argv[0], PKG_TAG_STR); return 0;
-        case 0: break;
-        default: usage(argv[0]); return 1;
-        }
+    int exit_code = 0;
+    
+    // Parse command-line arguments
+    int parse_result = parse_arguments(argc, argv, &gpios, &ngpio, &chipname, 
+                                     &duration, &pulses, &debug, &watch, &mode);
+    if (parse_result != 0) {
+        free(gpios);
+        if (chipname) free(chipname);
+        return parse_result > 0 ? 0 : 1; // Help/version return 0, error return 1
     }
-    if (ngpio == 0) {
-        fprintf(stderr, "Error: at least one --gpio required\n");
-        usage(argv[0]);
+    
+    // Validate arguments
+    if (validate_arguments(gpios, ngpio, duration, pulses) != 0) {
+        free(gpios);
+        if (chipname) free(chipname);
         return 1;
     }
-    signal(SIGINT, sigint_handler);
-
-    // Spawn a thread per GPIO
-    pthread_t *threads = calloc(ngpio, sizeof(*threads));
-    for (size_t i = 0; i < ngpio; i++) {
-        struct thread_args *a = calloc(1, sizeof(*a));
-        a->gpio = gpios[i];
-        a->chipname = chipname;  // will be freed at exit
-        a->duration = duration;
-        a->pulses = pulses;
-        a->debug = debug;
-        a->watch = watch;
-        a->mode = mode;
-        int ret = pthread_create(&threads[i], NULL, thread_fn, a);
-        if (ret) {
-            fprintf(stderr, "Error: cannot create thread for GPIO %d: %s\n", a->gpio, strerror(ret));
-            free(a);
-            threads[i] = 0;
-        }
+    
+    // Set up signal handler for graceful shutdown
+    if (signal(SIGINT, sigint_handler) == SIG_ERR) {
+        fprintf(stderr, "Warning: Failed to set up signal handler\n");
     }
-    // Wait for threads to finish
-    for (size_t i = 0; i < ngpio; i++) {
-        if (threads[i]) pthread_join(threads[i], NULL);
+    
+    // Run appropriate measurement mode
+    int measurement_result;
+    if (watch) {
+        // Continuous monitoring mode
+        measurement_result = run_watch_mode(gpios, ngpio, chipname, duration, 
+                                          pulses, debug, mode);
+    } else {
+        // Single measurement mode
+        measurement_result = run_single_measurement(gpios, ngpio, chipname, duration, 
+                                                  pulses, debug, mode);
     }
-    free(threads);
+    
+    // Cleanup
     free(gpios);
     if (chipname) free(chipname);
-    return 0;
-}
+    
+    // Set appropriate exit code
+    if (measurement_result != 0) {
+        exit_code = 1;
+        if (!debug) {
+            fprintf(stderr, "Error: Measurement failed. Use --debug for details.\n");
+        }
+    }
+    
+    return exit_code;
+} 

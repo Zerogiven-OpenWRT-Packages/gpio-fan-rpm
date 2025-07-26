@@ -1,1 +1,30 @@
+# Build artifacts
+*.o
+*.a
+*.so
+*.d
+*.dSYM/
+*.exe
+*.dll
+*.dylib
+gpio-fan-rpm
+
+# OpenWRT build artifacts
+*.ipk
+*.tar.gz
+*.tar.xz
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log 
