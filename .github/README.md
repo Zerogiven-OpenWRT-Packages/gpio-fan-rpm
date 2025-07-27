@@ -12,28 +12,23 @@ The main production workflow for creating releases with built packages for both 
 - **Automatic Release Creation**: Creates GitHub releases with built packages
 - **Dual Version Support**: Builds for both OpenWRT 23.05 and 24.10
 - **Cross-Compilation**: Uses x86_64 architecture for universal compatibility
-- **Version Management**: Automatically updates Makefile version
+- **Version Verification**: Ensures Makefile version matches git tag
 - **Release Assets**: Includes both packages and installation instructions
 - **Tag-Based Triggers**: Automatically runs on version tags (v1.0.0, v1.0.1, etc.)
-- **Dry-Run Mode**: Test builds without creating releases
 
 **Usage:**
 ```bash
-# Automatic: Push a version tag
-git tag v1.0.0
-git push origin v1.0.0
-
-# Manual: Use workflow dispatch
-# Go to Actions → Release Build → Run workflow
-# Choose version and options (dry-run available)
+# Use the proper release process
+./scripts/update-version.sh 1.0.0
+git push origin v1.0.0  # Triggers automatic release
 ```
 
 ### Build Test (`build-test.yml`) 🧪 **DEVELOPMENT TESTING**
 
-A simplified build testing workflow for quick development validation. Perfect for testing builds without creating releases.
+A build testing workflow for development validation. Tests package compilation without creating releases.
 
 **Features:**
-- **Single Version Testing**: Test one OpenWRT version at a time
+- **Flexible Version Testing**: Test one or both OpenWRT versions
 - **Optional Verbose Output**: Toggle detailed build logs
 - **Quick Feedback**: Fast execution for development iteration
 - **No Release Creation**: Pure build testing only
@@ -42,7 +37,7 @@ A simplified build testing workflow for quick development validation. Perfect fo
 **Usage:**
 ```bash
 # Go to Actions → Build Test → Run workflow
-# Choose OpenWRT version (23.05 or 24.10)
+# Choose OpenWRT version: 23.05, 24.10, or both
 # Toggle verbose output if needed
 ```
 
@@ -80,17 +75,17 @@ When you push a version tag (e.g., `v1.0.0`), the workflow automatically:
 5. **Creates GitHub release** with both packages
 6. **Uploads release assets** with installation instructions
 
-#### 3. Manual Release (Alternative)
+#### 3. Release Process
 
-If you prefer manual control:
+The workflow automatically:
 
-1. Go to **Actions** → **Release Build**
-2. Click **Run workflow**
-3. Enter version (e.g., `1.0.0`)
-4. Choose options:
-   - **Force Release**: Override existing tags
-   - **Dry Run**: Build packages without creating release
-5. Click **Run workflow**
+1. **Extracts version** from the git tag
+2. **Verifies** that Makefile version matches the tag
+3. **Builds packages** for both OpenWRT versions
+4. **Creates GitHub release** with both packages
+5. **Uploads release assets** with installation instructions
+
+**Note**: Manual workflow dispatch is not available. Use the proper release process with `update-version.sh`.
 
 #### 4. Development Testing
 
@@ -98,7 +93,7 @@ For testing builds without releases:
 
 1. Go to **Actions** → **Build Test**
 2. Click **Run workflow**
-3. Choose OpenWRT version (23.05 or 24.10)
+3. Choose OpenWRT version: 23.05, 24.10, or both
 4. Toggle verbose output if needed
 5. Click **Run workflow**
 
@@ -140,9 +135,9 @@ opkg install gpio-fan-rpm_1.0.0-r1_all.ipk
 - Optimized for speed and reliability
 
 #### Version Management
-- Automatically updates `PKG_VERSION` in Makefile
+- Verifies `PKG_VERSION` in Makefile matches git tag
 - Extracts version from git tags
-- Supports manual version input
+- Ensures proper release process is followed
 
 #### Quality Assurance
 - Builds both OpenWRT versions
@@ -150,11 +145,10 @@ opkg install gpio-fan-rpm_1.0.0-r1_all.ipk
 - Validates package generation
 - Comprehensive error handling
 
-#### Testing Options
-- **Dry-Run Mode**: Test builds without creating releases
-- **Development Testing**: Quick single-version builds
-- **Verbose Output**: Detailed build logs for debugging
-- **Manual Triggers**: Flexible workflow control
+#### Release Process
+- **Version Verification**: Ensures Makefile matches git tag
+- **Automatic Builds**: Creates packages for both OpenWRT versions
+- **Release Creation**: Automatically creates GitHub releases
 
 ### Development Workflow
 
@@ -201,20 +195,20 @@ opkg install gpio-fan-rpm_1.0.0-r1_all.ipk
 | Workflow | Purpose | Speed | Scope | Output | Analysis |
 |----------|---------|-------|-------|--------|----------|
 | **Release Build** | Production releases | Medium | Both versions | GitHub release + packages | Full release process |
-| **Build Test** | Development testing | Fast | Single version | Build artifacts | Basic validation |
+| **Build Test** | Development testing | Fast | Flexible (1 or 2 versions) | Build artifacts | Basic validation |
 
 ## 🎯 Usage Examples
 
 **For Development:**
 ```bash
-# Quick test of one version
-Actions → Build Test → Choose version → Run
+# Test one or both versions
+Actions → Build Test → Choose version(s) → Run
 ```
 
 **For Release Testing:**
 ```bash
-# Test full release process without creating release
-Actions → Release Build → Enter version → Enable "Dry Run" → Run
+# Test the build process with development workflow
+Actions → Build Test → Choose version → Run
 ```
 
 **For Production Release:**
