@@ -53,7 +53,7 @@ int parse_arguments(int argc, char **argv, int **gpios, size_t *ngpio,
  * @param pulses Pulses per revolution
  * @return int 0 on success, -1 on error
  */
-int validate_arguments(int *gpios, size_t ngpio, int duration, int pulses);
+int validate_arguments(int *gpios, size_t ngpio, int duration, int pulses, const char *prog);
 
 #ifdef __cplusplus
 }

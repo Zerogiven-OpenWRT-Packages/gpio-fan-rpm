@@ -54,7 +54,7 @@ char* format_json(int gpio, double rpm) {
     if (!j) return NULL;
     
     json_object_object_add(j, "gpio", json_object_new_int(gpio));
-    json_object_object_add(j, "rpm", json_object_new_double(round(rpm)));
+    json_object_object_add(j, "rpm", json_object_new_int((int)round(rpm)));
     
     const char *s = json_object_to_json_string_ext(j, JSON_C_TO_STRING_PLAIN);
     if (!s) {

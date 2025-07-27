@@ -27,9 +27,11 @@ pthread_mutex_t print_mutex = PTHREAD_MUTEX_INITIALIZER;
  * 
  * @param sig Signal number
  */
-static void sigint_handler(int sig) {
+static void signal_handler(int sig) {
     (void)sig;
     stop = 1;
+    // Add newline after interrupt for cleaner output
+    fprintf(stderr, " ");
 }
 
 /**
@@ -40,7 +42,7 @@ static void sigint_handler(int sig) {
  * @return int Exit code
  */
 int main(int argc, char **argv) {
-    int duration = 2, pulses = 2;
+    int duration = 2, pulses = 4;
     char *chipname = NULL;
     int debug = 0, watch = 0;
     output_mode_t mode = MODE_DEFAULT;
@@ -58,15 +60,18 @@ int main(int argc, char **argv) {
     }
     
     // Validate arguments
-    if (validate_arguments(gpios, ngpio, duration, pulses) != 0) {
+    if (validate_arguments(gpios, ngpio, duration, pulses, argv[0]) != 0) {
         free(gpios);
         if (chipname) free(chipname);
         return 1;
     }
     
-    // Set up signal handler for graceful shutdown
-    if (signal(SIGINT, sigint_handler) == SIG_ERR) {
-        fprintf(stderr, "Warning: Failed to set up signal handler\n");
+    // Set up signal handlers for graceful shutdown
+    if (signal(SIGINT, signal_handler) == SIG_ERR) {
+        fprintf(stderr, "Warning: Failed to set up SIGINT handler\n");
+    }
+    if (signal(SIGTERM, signal_handler) == SIG_ERR) {
+        fprintf(stderr, "Warning: Failed to set up SIGTERM handler\n");
     }
     
     // Run appropriate measurement mode

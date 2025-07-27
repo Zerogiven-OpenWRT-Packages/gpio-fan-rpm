@@ -42,7 +42,7 @@ gpio_context_t* gpio_init(int gpio, const char *chipname) {
         }
         ctx->chipname = strdup(chipname);
     } else {
-        // Auto-detect chip
+        // Auto-detect chip (this should rarely happen now)
         ctx->chip = chip_auto_detect(gpio, &ctx->chipname);
         if (!ctx->chip) {
             fprintf(stderr, "Error: cannot find suitable chip for GPIO %d\n", gpio);
@@ -60,20 +60,26 @@ void gpio_cleanup(gpio_context_t *ctx) {
 #ifdef LIBGPIOD_V2
     if (ctx->request) {
         gpiod_line_request_release(ctx->request);
+        ctx->request = NULL;
     }
+    ctx->event_fd = -1;
 #else
     if (ctx->line) {
         gpiod_line_release(ctx->line);
+        ctx->line = NULL;
     }
 #endif
     
     if (ctx->chip) {
         chip_close(ctx->chip);
+        ctx->chip = NULL;
     }
     
     if (ctx->chipname) {
         free(ctx->chipname);
+        ctx->chipname = NULL;
     }
+    
     free(ctx);
 }
 
@@ -154,37 +160,94 @@ int gpio_read_event(gpio_context_t *ctx) {
 #endif
 }
 
+/**
+ * @brief Measure RPM using GPIO edge detection
+ * 
+ * This function performs a two-phase measurement:
+ * 1. Warmup phase: 1 second for fan stabilization
+ * 2. Measurement phase: (duration-1) seconds for actual RPM calculation
+ * 
+ * @param ctx GPIO context
+ * @param pulses_per_rev Pulses per revolution
+ * @param duration Total measurement duration in seconds (minimum 2)
+ * @param debug Enable debug output
+ * @return double RPM value, or -1.0 if interrupted
+ */
 double gpio_measure_rpm(gpio_context_t *ctx, int pulses_per_rev, int duration, int debug) {
     if (!ctx) return 0.0;
     
-    struct timespec start_ts, ev_ts;
+    struct timespec start_ts;
     unsigned int count = 0;
-    int half = duration / 2;
+    int warmup_duration = 1;  // Fixed 1-second warmup
+    int measurement_duration = duration - warmup_duration;
+    int measurement_completed = 0;
     
     // Warmup phase
     clock_gettime(CLOCK_MONOTONIC, &start_ts);
-    while (1) {
-        if (gpio_wait_event(ctx, 1000000000LL) <= 0) break; // 1 second timeout
-        if (gpio_read_event(ctx) < 0) break;
-        
-        clock_gettime(CLOCK_MONOTONIC, &ev_ts);
-        if ((ev_ts.tv_sec - start_ts.tv_sec) >= half) break;
+    if (debug) {
+        fprintf(stderr, "Warmup phase: %d seconds\n", warmup_duration);
     }
     
-    // Measurement phase
+    // Warmup phase - simple 1-second wait
+    struct timespec warmup_end_ts = start_ts;
+    warmup_end_ts.tv_sec += warmup_duration;
+    
+    while (1) {
+        struct timespec current_ts;
+        clock_gettime(CLOCK_MONOTONIC, &current_ts);
+        if (current_ts.tv_sec >= warmup_end_ts.tv_sec) {
+            break; // Warmup time completed
+        }
+        
+        // Wait for events during warmup (non-blocking)
+        gpio_wait_event(ctx, 100000000LL); // 100ms timeout
+        gpio_read_event(ctx); // Read and discard any events
+    }
+    
+    // Measurement phase - run for full measurement duration
     count = 0;
     clock_gettime(CLOCK_MONOTONIC, &start_ts);
-    while (!stop) {
-        if (gpio_wait_event(ctx, 1000000000LL) <= 0) break; // 1 second timeout
-        if (gpio_read_event(ctx) < 0) break;
-        
-        count++;
-        clock_gettime(CLOCK_MONOTONIC, &ev_ts);
-        if ((ev_ts.tv_sec - start_ts.tv_sec) >= half) break;
+    if (debug) {
+        fprintf(stderr, "Measurement phase: %d seconds\n", measurement_duration);
     }
     
-    double elapsed = (ev_ts.tv_sec - start_ts.tv_sec) + 
-                     (ev_ts.tv_nsec - start_ts.tv_nsec) / 1e9;
+    struct timespec measurement_end_ts;
+    measurement_end_ts = start_ts;
+    measurement_end_ts.tv_sec += measurement_duration;
+    
+    while (!stop) {
+        // Check if measurement time is up
+        struct timespec current_ts;
+        clock_gettime(CLOCK_MONOTONIC, &current_ts);
+        if (current_ts.tv_sec >= measurement_end_ts.tv_sec) {
+            measurement_completed = 1;
+            break; // Measurement time completed
+        }
+        
+        int wait_result = gpio_wait_event(ctx, 1000000000LL);
+        if (wait_result <= 0) {
+            // Timeout - continue until measurement time is up
+            continue;
+        }
+        if (gpio_read_event(ctx) < 0) {
+            if (debug) fprintf(stderr, "Warning: Error reading event during measurement\n");
+            break;
+        }
+        
+        count++;
+    }
+    
+    // If we were interrupted before completing the measurement, return special value
+    if (!measurement_completed && stop) {
+        return -1.0; // Special value to indicate interruption
+    }
+    
+    // Get current time for elapsed calculation
+    struct timespec current_ts;
+    clock_gettime(CLOCK_MONOTONIC, &current_ts);
+    
+    double elapsed = (current_ts.tv_sec - start_ts.tv_sec) + 
+                     (current_ts.tv_nsec - start_ts.tv_nsec) / 1e9;
     
     if (elapsed <= 0.0) return 0.0;
     
@@ -237,6 +300,14 @@ void* gpio_thread_fn(void *arg) {
     do {
         double rpm = gpio_measure_rpm(ctx, a->pulses, a->duration, a->debug);
         
+
+        
+        // Don't output interrupted measurements
+        if (rpm < 0.0) {
+            // Interrupted during measurement, exit cleanly
+            break;
+        }
+        
         // For multiple GPIOs, store result and signal completion
         if (a->total_threads > 1 && a->results && a->finished && 
             a->results_mutex && a->all_finished) {
@@ -263,31 +334,45 @@ void* gpio_thread_fn(void *arg) {
             
 
         } else {
-            // Single GPIO or no synchronization primitives - use original approach
-            pthread_mutex_lock(&print_mutex);
-            char *output = NULL;
-            
-            switch (a->mode) {
-            case MODE_NUMERIC:
-                output = format_numeric(rpm);
-                break;
-            case MODE_JSON:
-                output = format_json(a->gpio, rpm);
-                break;
-            case MODE_COLLECTD:
-                output = format_collectd(a->gpio, rpm, a->duration);
-                break;
-            default:
-                output = format_human_readable(a->gpio, rpm);
-                break;
+            // Single GPIO - store result for main thread to output
+            // This prevents double output in single measurement mode
+            if (a->results && a->finished) {
+                pthread_mutex_lock(a->results_mutex);
+                a->results[a->thread_index] = rpm;
+                a->finished[a->thread_index] = 1;
+                pthread_mutex_unlock(a->results_mutex);
+            } else {
+                // Fallback: direct output if no synchronization primitives available
+                pthread_mutex_lock(&print_mutex);
+                char *output = NULL;
+                
+                switch (a->mode) {
+                case MODE_NUMERIC:
+                    output = format_numeric(rpm);
+                    break;
+                case MODE_JSON:
+                    output = format_json(a->gpio, rpm);
+                    break;
+                case MODE_COLLECTD:
+                    output = format_collectd(a->gpio, rpm, a->duration);
+                    break;
+                default:
+                    output = format_human_readable(a->gpio, rpm);
+                    break;
+                }
+                
+                if (output) {
+                    printf("%s", output);
+                    free(output);
+                }
+                fflush(stdout);
+                pthread_mutex_unlock(&print_mutex);
             }
-            
-            if (output) {
-                printf("%s", output);
-                free(output);
-            }
-            fflush(stdout);
-            pthread_mutex_unlock(&print_mutex);
+        }
+        
+        // For single measurement mode, only run once
+        if (!a->watch) {
+            break;
         }
         
     } while (a->watch && !stop);

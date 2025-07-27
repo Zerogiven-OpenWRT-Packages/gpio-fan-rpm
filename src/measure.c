@@ -17,9 +17,15 @@
 #include "measure.h"
 #include "gpio.h"
 #include "format.h"
+#include "chip.h"
+#include <math.h>
 
 int run_single_measurement(int *gpios, size_t ngpio, char *chipname,
                           int duration, int pulses, int debug, output_mode_t mode) {
+    // Debug timing
+    if (debug) {
+        fprintf(stderr, "DEBUG: Starting measurement for %zu GPIOs\n", ngpio);
+    }
     // Single measurement mode - simpler approach
     double *results = calloc(ngpio, sizeof(*results));
     int *finished = calloc(ngpio, sizeof(*finished));
@@ -37,6 +43,21 @@ int run_single_measurement(int *gpios, size_t ngpio, char *chipname,
     // Reset for measurement
     memset(finished, 0, ngpio * sizeof(*finished));
     memset(results, 0, ngpio * sizeof(*results));
+    
+    // Auto-detect chip once for all GPIOs if not specified
+    if (!chipname) {
+        // Use the first GPIO to detect the chip
+        chipname = NULL;
+        struct gpiod_chip *test_chip = chip_auto_detect(gpios[0], &chipname);
+        if (test_chip) {
+            chip_close(test_chip);
+        } else {
+            fprintf(stderr, "Error: cannot auto-detect GPIO chip\n");
+            free(results);
+            free(finished);
+            return -1;
+        }
+    }
     
     pthread_t *threads = calloc(ngpio, sizeof(*threads));
     if (!threads) {
@@ -90,35 +111,46 @@ int run_single_measurement(int *gpios, size_t ngpio, char *chipname,
     if (mode == MODE_JSON && ngpio > 1) {
         // Output as JSON array
         printf("[");
+        int first = 1;
         for (size_t i = 0; i < ngpio; i++) {
-            if (i > 0) printf(",");
-            printf("{\"gpio\":%d,\"rpm\":%.0f}", gpios[i], results[i]);
+            // Skip interrupted measurements (negative values indicate interruption)
+            if (results[i] < 0.0) {
+                continue;
+            }
+            if (!first) printf(",");
+            printf("{\"gpio\":%d,\"rpm\":%d}", gpios[i], (int)round(results[i]));
+            first = 0;
         }
         printf("]\n");
     } else {
-        // Output individual results in order
-        for (size_t i = 0; i < ngpio; i++) {
-            char *output = NULL;
-            switch (mode) {
-            case MODE_NUMERIC:
-                output = format_numeric(results[i]);
-                break;
-            case MODE_JSON:
-                output = format_json(gpios[i], results[i]);
-                break;
-            case MODE_COLLECTD:
-                output = format_collectd(gpios[i], results[i], duration);
-                break;
-            default:
-                output = format_human_readable(gpios[i], results[i]);
-                break;
-            }
-            
-            if (output) {
-                printf("%s", output);
-                free(output);
-            }
+            // Output individual results in order
+    for (size_t i = 0; i < ngpio; i++) {
+        // Skip interrupted measurements (negative values indicate interruption)
+        if (results[i] < 0.0) {
+            continue;
         }
+        
+        char *output = NULL;
+        switch (mode) {
+        case MODE_NUMERIC:
+            output = format_numeric(results[i]);
+            break;
+        case MODE_JSON:
+            output = format_json(gpios[i], results[i]);
+            break;
+        case MODE_COLLECTD:
+            output = format_collectd(gpios[i], results[i], duration);
+            break;
+        default:
+            output = format_human_readable(gpios[i], results[i]);
+            break;
+        }
+        
+        if (output) {
+            printf("%s", output);
+            free(output);
+        }
+    }
     }
     fflush(stdout);
     
