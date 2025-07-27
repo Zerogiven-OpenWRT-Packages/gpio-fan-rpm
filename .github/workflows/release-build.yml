@@ -1,0 +1,366 @@
+name: Release Build
+
+# Trigger on version tags and manual workflow dispatch
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0, v1.0.1, etc.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., 1.0.0)'
+        required: true
+        default: '1.0.0'
+      force_release:
+        description: 'Force release even if tag already exists'
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: 'Build packages without creating release (for testing)'
+        required: false
+        default: false
+        type: boolean
+
+# Environment variables
+env:
+  OPENWRT_23_05_VERSION: "23.05.3"
+  OPENWRT_24_10_VERSION: "24.10.0"
+  SDK_BASE_URL: "https://downloads.openwrt.org/releases"
+  TARGET_ARCH: "x86_64"  # Use x86_64 for cross-compilation
+  TARGET: "x86"
+  SUBTARGET: "64"
+  SDK_NAME: "x86-64"
+
+jobs:
+  build-packages:
+    name: Build Packages
+    runs-on: ubuntu-latest
+    
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      tag_name: ${{ steps.get_version.outputs.tag_name }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag or input
+        id: get_version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            # Extract version from tag (remove 'v' prefix)
+            VERSION=${GITHUB_REF#refs/tags/v}
+            TAG_NAME="v$VERSION"
+          else
+            # Use input version for manual trigger
+            VERSION="${{ github.event.inputs.version }}"
+            TAG_NAME="v$VERSION"
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Setup build environment
+        run: |
+          # Install required packages for Ubuntu
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            flex \
+            bison \
+            g++ \
+            gawk \
+            gcc-multilib \
+            g++-multilib \
+            gettext \
+            git \
+            libncurses5-dev \
+            libssl-dev \
+            python3-setuptools \
+            rsync \
+            swig \
+            unzip \
+            zlib1g-dev \
+            file \
+            wget \
+            time \
+            jq
+
+      - name: Update version in Makefile
+        run: |
+          # Update PKG_VERSION in Makefile
+          sed -i "s/^PKG_VERSION.*:=.*/PKG_VERSION := ${{ steps.get_version.outputs.version }}/" Makefile
+          echo "Updated Makefile version to ${{ steps.get_version.outputs.version }}"
+
+      - name: Build OpenWRT 23.05 package
+        id: build_23_05
+        run: |
+          echo "Building for OpenWRT 23.05..."
+          
+          # Download SDK
+          SDK_URL="${SDK_BASE_URL}/${OPENWRT_23_05_VERSION}/targets/${TARGET}/${SUBTARGET}/openwrt-sdk-${SDK_NAME}-generic_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+          wget -q "$SDK_URL" -O openwrt-sdk-23.05.tar.xz
+          tar -xf openwrt-sdk-23.05.tar.xz
+          SDK_DIR_23_05=$(find . -maxdepth 1 -name "openwrt-sdk-*" -type d | head -1)
+          
+          # Setup SDK
+          cd $SDK_DIR_23_05
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          
+          # Configure
+          cat > .config << EOF
+          CONFIG_TARGET_x86=y
+          CONFIG_TARGET_x86_64=y
+          CONFIG_TARGET_x86_64_DEVICE_generic=y
+          CONFIG_HAS_SUBTARGETS=y
+          CONFIG_HAS_DEVICES=y
+          CONFIG_TARGET_BOARD="x86"
+          CONFIG_TARGET_SUBTARGET="64"
+          CONFIG_TARGET_PROFILE="generic"
+          CONFIG_TARGET_ARCH_PACKAGES=""
+          CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe -march=x86-64"
+          CONFIG_TARGET_OPTIMIZATION="-Os -pipe -march=x86-64"
+          CONFIG_LIBC="musl"
+          CONFIG_LIBC_VERSION="1.2.4"
+          CONFIG_TARGET_SUFFIX="generic"
+          CONFIG_USE_SSTRIP=y
+          CONFIG_STRIP_ARGS="--strip-all"
+          CONFIG_USE_MKLIBS=y
+          CONFIG_PACKAGE_libgpiod=y
+          CONFIG_PACKAGE_libjson-c=y
+          CONFIG_PACKAGE_libpthread=y
+          EOF
+          
+          make defconfig
+          
+          # Copy package source
+          mkdir -p package/gpio-fan-rpm
+          cp -r $GITHUB_WORKSPACE/* package/gpio-fan-rpm/
+          
+          # Build package
+          make package/gpio-fan-rpm/compile V=s
+          
+          # Check if build was successful
+          if [ -f bin/packages/*/base/gpio-fan-rpm_*.ipk ]; then
+            echo "✅ OpenWRT 23.05 build successful"
+            echo "package_23_05_path=bin/packages/*/base/gpio-fan-rpm_*.ipk" >> $GITHUB_OUTPUT
+            echo "package_23_05_name=$(basename bin/packages/*/base/gpio-fan-rpm_*.ipk)" >> $GITHUB_OUTPUT
+          else
+            echo "❌ OpenWRT 23.05 build failed"
+            exit 1
+          fi
+
+      - name: Build OpenWRT 24.10 package
+        id: build_24_10
+        run: |
+          echo "Building for OpenWRT 24.10..."
+          
+          # Download SDK
+          SDK_URL="${SDK_BASE_URL}/${OPENWRT_24_10_VERSION}/targets/${TARGET}/${SUBTARGET}/openwrt-sdk-${SDK_NAME}-generic_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+          wget -q "$SDK_URL" -O openwrt-sdk-24.10.tar.xz
+          tar -xf openwrt-sdk-24.10.tar.xz
+          SDK_DIR_24_10=$(find . -maxdepth 1 -name "openwrt-sdk-*" -type d | head -1)
+          
+          # Setup SDK
+          cd $SDK_DIR_24_10
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          
+          # Configure
+          cat > .config << EOF
+          CONFIG_TARGET_x86=y
+          CONFIG_TARGET_x86_64=y
+          CONFIG_TARGET_x86_64_DEVICE_generic=y
+          CONFIG_HAS_SUBTARGETS=y
+          CONFIG_HAS_DEVICES=y
+          CONFIG_TARGET_BOARD="x86"
+          CONFIG_TARGET_SUBTARGET="64"
+          CONFIG_TARGET_PROFILE="generic"
+          CONFIG_TARGET_ARCH_PACKAGES=""
+          CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe -march=x86-64"
+          CONFIG_TARGET_OPTIMIZATION="-Os -pipe -march=x86-64"
+          CONFIG_LIBC="musl"
+          CONFIG_LIBC_VERSION="1.2.4"
+          CONFIG_TARGET_SUFFIX="generic"
+          CONFIG_USE_SSTRIP=y
+          CONFIG_STRIP_ARGS="--strip-all"
+          CONFIG_USE_MKLIBS=y
+          CONFIG_PACKAGE_libgpiod=y
+          CONFIG_PACKAGE_libjson-c=y
+          CONFIG_PACKAGE_libpthread=y
+          EOF
+          
+          make defconfig
+          
+          # Copy package source
+          mkdir -p package/gpio-fan-rpm
+          cp -r $GITHUB_WORKSPACE/* package/gpio-fan-rpm/
+          
+          # Build package
+          make package/gpio-fan-rpm/compile V=s
+          
+          # Check if build was successful
+          if [ -f bin/packages/*/base/gpio-fan-rpm_*.ipk ]; then
+            echo "✅ OpenWRT 24.10 build successful"
+            echo "package_24_10_path=bin/packages/*/base/gpio-fan-rpm_*.ipk" >> $GITHUB_OUTPUT
+            echo "package_24_10_name=$(basename bin/packages/*/base/gpio-fan-rpm_*.ipk)" >> $GITHUB_OUTPUT
+          else
+            echo "❌ OpenWRT 24.10 build failed"
+            exit 1
+          fi
+
+      - name: Prepare release assets
+        run: |
+          # Copy packages to workspace for release
+          mkdir -p release-assets
+          
+          # Copy OpenWRT 23.05 package
+          cp ${{ steps.build_23_05.outputs.package_23_05_path }} release-assets/
+          
+          # Copy OpenWRT 24.10 package
+          cp ${{ steps.build_24_10.outputs.package_24_10_path }} release-assets/
+          
+          # Create package info
+          echo "## Package Information" > release-assets/README.md
+          echo "" >> release-assets/README.md
+          echo "### OpenWRT 23.05 Package" >> release-assets/README.md
+          echo "- **File**: ${{ steps.build_23_05.outputs.package_23_05_name }}" >> release-assets/README.md
+          echo "- **libgpiod**: v1" >> release-assets/README.md
+          echo "- **Architecture**: x86_64 (cross-compiled)" >> release-assets/README.md
+          echo "" >> release-assets/README.md
+          echo "### OpenWRT 24.10 Package" >> release-assets/README.md
+          echo "- **File**: ${{ steps.build_24_10.outputs.package_24_10_name }}" >> release-assets/README.md
+          echo "- **libgpiod**: v2" >> release-assets/README.md
+          echo "- **Architecture**: x86_64 (cross-compiled)" >> release-assets/README.md
+          echo "" >> release-assets/README.md
+          echo "### Installation" >> release-assets/README.md
+          echo "```bash" >> release-assets/README.md
+          echo "# For OpenWRT 23.05" >> release-assets/README.md
+          echo "opkg install ${{ steps.build_23_05.outputs.package_23_05_name }}" >> release-assets/README.md
+          echo "" >> release-assets/README.md
+          echo "# For OpenWRT 24.10" >> release-assets/README.md
+          echo "opkg install ${{ steps.build_24_10.outputs.package_24_10_name }}" >> release-assets/README.md
+          echo "```" >> release-assets/README.md
+          
+          # List assets
+          echo "Release assets prepared:"
+          ls -la release-assets/
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-packages-${{ steps.get_version.outputs.version }}
+          path: release-assets/
+          retention-days: 30
+
+  create-release:
+    name: Create GitHub Release
+    needs: build-packages
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' || github.event.inputs.force_release == 'true') && github.event.inputs.dry_run != 'true'
+    
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: release-packages-${{ needs.build-packages.outputs.version }}
+          path: release-assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.build-packages.outputs.tag_name }}
+          name: "Release ${{ needs.build-packages.outputs.version }}"
+          body: |
+            ## gpio-fan-rpm ${{ needs.build-packages.outputs.version }}
+            
+            High-precision command-line utility for measuring fan RPM using GPIO edge detection on OpenWRT devices.
+            
+            ### Compatibility
+            - **OpenWRT 23.05**: libgpiod v1 support
+            - **OpenWRT 24.10**: libgpiod v2 support
+            
+            ### Installation
+            Download the appropriate package for your OpenWRT version and install with:
+            ```bash
+            opkg install <package-name>.ipk
+            ```
+            
+            ### Usage
+            ```bash
+            # Basic usage
+            gpio-fan-rpm --gpio=17
+            
+            # Continuous monitoring
+            gpio-fan-rpm --gpio=17 --watch
+            
+            # JSON output
+            gpio-fan-rpm --gpio=17 --json
+            ```
+            
+            ### Features
+            - High-precision RPM measurement using GPIO edge detection
+            - Support for both libgpiod v1 and v2 APIs
+            - Multiple output formats (human-readable, JSON, numeric, collectd)
+            - Continuous monitoring mode
+            - Multithreaded support for multiple GPIO pins
+            - Auto-detection of GPIO chips
+            
+            ### Changes
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for detailed changes.
+          files: |
+            release-assets/*.ipk
+            release-assets/README.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release Summary
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Release Created**: ${{ needs.build-packages.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Packages Built**: " >> $GITHUB_STEP_SUMMARY
+          echo "- OpenWRT 23.05 (libgpiod v1)" >> $GITHUB_STEP_SUMMARY
+          echo "- OpenWRT 24.10 (libgpiod v2)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Architecture**: x86_64 (cross-compiled)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release URL**: https://github.com/${{ github.repository }}/releases/tag/${{ needs.build-packages.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+
+  dry-run-summary:
+    name: Dry Run Summary
+    needs: build-packages
+    runs-on: ubuntu-latest
+    if: github.event.inputs.dry_run == 'true'
+    
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-packages-${{ needs.build-packages.outputs.version }}
+          path: release-assets/
+
+      - name: Dry Run Summary
+        run: |
+          echo "## Dry Run Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🧪 **Dry Run Completed**: ${{ needs.build-packages.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Packages Built Successfully**: " >> $GITHUB_STEP_SUMMARY
+          echo "- OpenWRT 23.05 (libgpiod v1)" >> $GITHUB_STEP_SUMMARY
+          echo "- OpenWRT 24.10 (libgpiod v2)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Architecture**: x86_64 (cross-compiled)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Artifacts**: Available for download (30 days)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Ready for Release**: All builds successful, no release created" >> $GITHUB_STEP_SUMMARY 

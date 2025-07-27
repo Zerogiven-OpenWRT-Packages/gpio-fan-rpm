@@ -27,7 +27,7 @@ typedef struct line_request {
     struct gpiod_line_request *request;
     int event_fd;
 #else
-    gpiod_line *line;
+    struct gpiod_line *line;
 #endif
     int gpio;
 } line_request_t;

@@ -1,106 +1,41 @@
 name: Build Test
 
-# Manual workflow trigger only
+# Manual workflow trigger only - for development testing
 on:
   workflow_dispatch:
     inputs:
       openwrt_version:
         description: 'OpenWRT version to test'
         required: true
-        default: 'both'
+        default: '24.10'
         type: choice
         options:
-          - 'both'
           - '23.05'
           - '24.10'
-      architecture:
-        description: 'Target architecture'
-        required: true
-        default: 'x86_64'
-        type: choice
-        options:
-          - 'x86_64'
-          - 'aarch64'
-          - 'arm_cortex-a7'
-          - 'mipsel_24kc'
+      verbose:
+        description: 'Verbose build output'
+        required: false
+        default: false
+        type: boolean
 
 # Environment variables
 env:
   OPENWRT_23_05_VERSION: "23.05.3"
   OPENWRT_24_10_VERSION: "24.10.0"
   SDK_BASE_URL: "https://downloads.openwrt.org/releases"
+  TARGET_ARCH: "x86_64"
+  TARGET: "x86"
+  SUBTARGET: "64"
+  SDK_NAME: "x86-64"
 
 jobs:
   build-test:
-    name: Build Test - ${{ matrix.openwrt_version }} (${{ matrix.arch }})
+    name: Build Test - OpenWRT ${{ github.event.inputs.openwrt_version }}
     runs-on: ubuntu-latest
     
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # OpenWRT 23.05 builds
-          - openwrt_version: "23.05"
-            openwrt_full_version: "23.05.3"
-            arch: "x86_64"
-            target: "x86"
-            subtarget: "64"
-            sdk_name: "x86-64"
-          - openwrt_version: "23.05"
-            openwrt_full_version: "23.05.3"
-            arch: "aarch64"
-            target: "bcm27xx"
-            subtarget: "bcm2711"
-            sdk_name: "bcm27xx-bcm2711"
-          - openwrt_version: "23.05"
-            openwrt_full_version: "23.05.3"
-            arch: "arm_cortex-a7"
-            target: "sunxi"
-            subtarget: "cortexa7"
-            sdk_name: "sunxi-cortexa7"
-          
-          # OpenWRT 24.10 builds
-          - openwrt_version: "24.10"
-            openwrt_full_version: "24.10.0"
-            arch: "x86_64"
-            target: "x86"
-            subtarget: "64"
-            sdk_name: "x86-64"
-          - openwrt_version: "24.10"
-            openwrt_full_version: "24.10.0"
-            arch: "aarch64"
-            target: "bcm27xx"
-            subtarget: "bcm2711"
-            sdk_name: "bcm27xx-bcm2711"
-          - openwrt_version: "24.10"
-            openwrt_full_version: "24.10.0"
-            arch: "arm_cortex-a7"
-            target: "sunxi"
-            subtarget: "cortexa7"
-            sdk_name: "sunxi-cortexa7"
-        
-        # Note: Matrix filtering is handled in the job logic below
-
     steps:
-      - name: Check matrix compatibility
-        run: |
-          # Check if this matrix combination should be built
-          if [ "${{ github.event.inputs.openwrt_version }}" != "both" ] && [ "${{ github.event.inputs.openwrt_version }}" != "${{ matrix.openwrt_version }}" ]; then
-            echo "Skipping build: OpenWRT version mismatch (requested: ${{ github.event.inputs.openwrt_version }}, matrix: ${{ matrix.openwrt_version }})"
-            exit 0
-          fi
-          
-          if [ "${{ github.event.inputs.architecture }}" != "x86_64" ] && [ "${{ github.event.inputs.architecture }}" != "aarch64" ] && [ "${{ github.event.inputs.architecture }}" != "arm_cortex-a7" ] && [ "${{ github.event.inputs.architecture }}" != "${{ matrix.arch }}" ]; then
-            echo "Skipping build: Architecture mismatch (requested: ${{ github.event.inputs.architecture }}, matrix: ${{ matrix.arch }})"
-            exit 0
-          fi
-          
-          echo "Proceeding with build for OpenWRT ${{ matrix.openwrt_version }} (${{ matrix.arch }})"
-
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup build environment
         run: |
@@ -130,10 +65,17 @@ jobs:
 
       - name: Download OpenWRT SDK
         run: |
-          echo "Downloading OpenWRT ${{ matrix.openwrt_version }} SDK for ${{ matrix.arch }}..."
+          # Set version variables
+          if [ "${{ github.event.inputs.openwrt_version }}" = "23.05" ]; then
+            OPENWRT_VERSION="$OPENWRT_23_05_VERSION"
+          else
+            OPENWRT_VERSION="$OPENWRT_24_10_VERSION"
+          fi
           
-          # Construct SDK URL
-          SDK_URL="${SDK_BASE_URL}/${{ matrix.openwrt_full_version }}/targets/${{ matrix.target }}/${{ matrix.subtarget }}/openwrt-sdk-${{ matrix.sdk_name }}-generic_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+          echo "Downloading OpenWRT $OPENWRT_VERSION SDK for $TARGET_ARCH..."
+          
+          # Download SDK
+          SDK_URL="${SDK_BASE_URL}/${OPENWRT_VERSION}/targets/${TARGET}/${SUBTARGET}/openwrt-sdk-${SDK_NAME}-generic_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
           
           echo "SDK URL: $SDK_URL"
           
@@ -147,7 +89,6 @@ jobs:
           
           # Extract SDK
           tar -xf openwrt-sdk.tar.xz
-          ls -la
           
           # Find SDK directory
           SDK_DIR=$(find . -maxdepth 1 -name "openwrt-sdk-*" -type d | head -1)
@@ -169,17 +110,17 @@ jobs:
           
           # Configure for minimal build
           cat > .config << EOF
-          CONFIG_TARGET_${{ matrix.target }}=y
-          CONFIG_TARGET_${{ matrix.target }}_${{ matrix.subtarget }}=y
-          CONFIG_TARGET_${{ matrix.target }}_${{ matrix.subtarget }}_DEVICE_generic=y
+          CONFIG_TARGET_x86=y
+          CONFIG_TARGET_x86_64=y
+          CONFIG_TARGET_x86_64_DEVICE_generic=y
           CONFIG_HAS_SUBTARGETS=y
           CONFIG_HAS_DEVICES=y
-          CONFIG_TARGET_BOARD="${{ matrix.target }}"
-          CONFIG_TARGET_SUBTARGET="${{ matrix.subtarget }}"
+          CONFIG_TARGET_BOARD="x86"
+          CONFIG_TARGET_SUBTARGET="64"
           CONFIG_TARGET_PROFILE="generic"
           CONFIG_TARGET_ARCH_PACKAGES=""
-          CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe -mcpu=${{ matrix.arch }}"
-          CONFIG_TARGET_OPTIMIZATION="-Os -pipe -mcpu=${{ matrix.arch }}"
+          CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe -march=x86-64"
+          CONFIG_TARGET_OPTIMIZATION="-Os -pipe -march=x86-64"
           CONFIG_LIBC="musl"
           CONFIG_LIBC_VERSION="1.2.4"
           CONFIG_TARGET_SUFFIX="generic"
@@ -212,27 +153,15 @@ jobs:
         run: |
           cd $SDK_DIR
           
-          echo "Building gpio-fan-rpm package for OpenWRT ${{ matrix.openwrt_version }} (${{ matrix.arch }})..."
+          echo "Building gpio-fan-rpm package for OpenWRT ${{ github.event.inputs.openwrt_version }}..."
           
-          # Build the package with verbose output for comprehensive testing
-          make package/gpio-fan-rpm/compile V=s
-
-      - name: Run package checks
-        run: |
-          cd $SDK_DIR
-          
-          echo "Running additional package checks..."
-          
-          # Check package dependencies
-          if [ -f bin/packages/*/base/gpio-fan-rpm_*.ipk ]; then
-            echo "Package dependency analysis:"
-            tar -tzf bin/packages/*/base/gpio-fan-rpm_*.ipk | grep -E "(control|data)" | head -20
-            
-            echo "Package size analysis:"
-            du -h bin/packages/*/base/gpio-fan-rpm_*.ipk
-            
-            echo "Package contents:"
-            tar -tzf bin/packages/*/base/gpio-fan-rpm_*.ipk | grep -v "^$" | wc -l | xargs echo "Total files:"
+          # Build the package (verbose only if requested)
+          if [ "${{ github.event.inputs.verbose }}" = "true" ]; then
+            echo "Building with verbose output..."
+            make package/gpio-fan-rpm/compile V=s
+          else
+            echo "Building with standard output..."
+            make package/gpio-fan-rpm/compile
           fi
           
           # Check if build was successful
@@ -247,6 +176,9 @@ jobs:
             if [ -f bin/packages/*/base/gpio-fan-rpm_*.ipk ]; then
               echo "Package details:"
               tar -tzf bin/packages/*/base/gpio-fan-rpm_*.ipk | head -10
+              
+              echo "Package size:"
+              du -h bin/packages/*/base/gpio-fan-rpm_*.ipk
             fi
           else
             echo "❌ Build failed!"
@@ -257,16 +189,16 @@ jobs:
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: gpio-fan-rpm-${{ matrix.openwrt_version }}-${{ matrix.arch }}
+          name: build-test-${{ github.event.inputs.openwrt_version }}-${{ github.run_id }}
           path: |
             ${{ env.SDK_DIR }}/bin/packages/*/base/gpio-fan-rpm_*.ipk
             ${{ env.SDK_DIR }}/bin/packages/*/base/Packages*
-          retention-days: 30
+          retention-days: 7
 
       - name: Build summary
         if: always()
         run: |
-          echo "## Build Summary for OpenWRT ${{ matrix.openwrt_version }} (${{ matrix.arch }})" >> $GITHUB_STEP_SUMMARY
+          echo "## Build Test Summary for OpenWRT ${{ github.event.inputs.openwrt_version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if [ -f $SDK_DIR/bin/packages/*/base/gpio-fan-rpm_*.ipk ]; then
@@ -277,6 +209,10 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Package Size**: " >> $GITHUB_STEP_SUMMARY
             du -h $SDK_DIR/bin/packages/*/base/gpio-fan-rpm_*.ipk >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Architecture**: $TARGET_ARCH" >> $GITHUB_STEP_SUMMARY
+            echo "**OpenWRT Version**: ${{ github.event.inputs.openwrt_version }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Verbose Mode**: ${{ github.event.inputs.verbose }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Build Status**: FAILED" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY

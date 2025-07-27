@@ -58,8 +58,8 @@ typedef struct gpio_context {
     struct gpiod_line_request *request;
     int event_fd;
 #else
-    gpiod_chip *chip;
-    gpiod_line *line;
+    struct gpiod_chip *chip;
+    struct gpiod_line *line;
 #endif
     int gpio;
     char *chipname;

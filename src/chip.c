@@ -47,6 +47,7 @@ struct gpiod_chip* chip_auto_detect(int gpio, char **chipname_out) {
         if (!chip) continue;
         
         // Check if this chip has enough lines
+#ifdef LIBGPIOD_V2
         struct gpiod_chip_info *info = chip_get_info(chip);
         if (info) {
             size_t num_lines = gpiod_chip_info_get_num_lines(info);
@@ -57,6 +58,15 @@ struct gpiod_chip* chip_auto_detect(int gpio, char **chipname_out) {
                 return chip;
             }
         }
+#else
+        // In libgpiod v1, try to get a line to check if it exists
+        struct gpiod_line *line = gpiod_chip_get_line(chip, gpio);
+        if (line) {
+            gpiod_line_release(line);
+            *chipname_out = strdup(name);
+            return chip;
+        }
+#endif
         
         chip_close(chip);
     }
@@ -66,12 +76,19 @@ struct gpiod_chip* chip_auto_detect(int gpio, char **chipname_out) {
 
 struct gpiod_chip_info* chip_get_info(struct gpiod_chip *chip) {
     if (!chip) return NULL;
+#ifdef LIBGPIOD_V2
     return gpiod_chip_get_info(chip);
+#else
+    // In libgpiod v1, chip_info concept doesn't exist
+    // Return NULL to indicate this function is not available
+    return NULL;
+#endif
 }
 
 size_t chip_get_num_lines(struct gpiod_chip *chip) {
     if (!chip) return 0;
     
+#ifdef LIBGPIOD_V2
     struct gpiod_chip_info *info = chip_get_info(chip);
     if (!info) return 0;
     
@@ -79,6 +96,12 @@ size_t chip_get_num_lines(struct gpiod_chip *chip) {
     gpiod_chip_info_free(info);
     
     return num_lines;
+#else
+    // In libgpiod v1, we can't easily get the total number of lines
+    // Return a reasonable default or try to estimate
+    // For now, return a high number to be safe
+    return 64; // Most GPIO chips have fewer than 64 lines
+#endif
 }
 
 /**
@@ -90,6 +113,7 @@ size_t chip_get_num_lines(struct gpiod_chip *chip) {
 const char* chip_get_name(struct gpiod_chip *chip) {
     if (!chip) return NULL;
     
+#ifdef LIBGPIOD_V2
     struct gpiod_chip_info *info = chip_get_info(chip);
     if (!info) return NULL;
     
@@ -97,6 +121,10 @@ const char* chip_get_name(struct gpiod_chip *chip) {
     gpiod_chip_info_free(info);
     
     return name;
+#else
+    // In libgpiod v1, get name directly from chip
+    return gpiod_chip_name(chip);
+#endif
 }
 
 /**
@@ -108,6 +136,7 @@ const char* chip_get_name(struct gpiod_chip *chip) {
 const char* chip_get_label(struct gpiod_chip *chip) {
     if (!chip) return NULL;
     
+#ifdef LIBGPIOD_V2
     struct gpiod_chip_info *info = chip_get_info(chip);
     if (!info) return NULL;
     
@@ -115,4 +144,8 @@ const char* chip_get_label(struct gpiod_chip *chip) {
     gpiod_chip_info_free(info);
     
     return label;
+#else
+    // In libgpiod v1, get label directly from chip
+    return gpiod_chip_label(chip);
+#endif
 } 

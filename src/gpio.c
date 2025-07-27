@@ -22,8 +22,8 @@
 #include "line.h"
 #include "format.h"
 
-// Global variables
-volatile int stop = 0;
+// Global variables (extern declaration - defined in main.c)
+extern volatile int stop;
 extern pthread_mutex_t print_mutex;
 
 gpio_context_t* gpio_init(int gpio, const char *chipname) {

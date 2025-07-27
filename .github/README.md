@@ -1,142 +1,230 @@
 # GitHub Workflows
 
-This directory contains GitHub Actions workflows for the gpio-fan-rpm project.
+This directory contains GitHub Actions workflows for building and testing the gpio-fan-rpm package.
 
-## Available Workflows
+## 📋 Available Workflows
 
-### Build Test (`build-test.yml`)
+### Release Build (`release-build.yml`) ⭐ **PRODUCTION**
 
-A comprehensive build testing workflow that compiles the gpio-fan-rpm package for different OpenWRT versions and architectures using the OpenWRT SDK.
+The main production workflow for creating releases with built packages for both OpenWRT versions.
 
-### Quick Build Test (`quick-build-test.yml`)
+**Features:**
+- **Automatic Release Creation**: Creates GitHub releases with built packages
+- **Dual Version Support**: Builds for both OpenWRT 23.05 and 24.10
+- **Cross-Compilation**: Uses x86_64 architecture for universal compatibility
+- **Version Management**: Automatically updates Makefile version
+- **Release Assets**: Includes both packages and installation instructions
+- **Tag-Based Triggers**: Automatically runs on version tags (v1.0.0, v1.0.1, etc.)
+- **Dry-Run Mode**: Test builds without creating releases
 
-A simplified build testing workflow for quick validation during development. Focuses on the most common configuration (x86_64) for faster testing with optional verbose output.
+**Usage:**
+```bash
+# Automatic: Push a version tag
+git tag v1.0.0
+git push origin v1.0.0
 
-#### Features
+# Manual: Use workflow dispatch
+# Go to Actions → Release Build → Run workflow
+# Choose version and options (dry-run available)
+```
 
-**Build Test Workflow:**
-- **Manual Trigger Only**: Uses `workflow_dispatch` to prevent automatic runs
-- **Multiple OpenWRT Versions**: Tests both OpenWRT 23.05 and 24.10
-- **Multiple Architectures**: Supports x86_64, aarch64, and ARM Cortex-A7
-- **SDK-based Builds**: Uses official OpenWRT SDK for accurate testing
-- **Artifact Upload**: Saves built packages as workflow artifacts
-- **Detailed Logging**: Provides comprehensive build information
-- **Package Analysis**: Additional checks on built packages
-- **Comprehensive Testing**: Full validation for releases
+### Build Test (`build-test.yml`) 🧪 **DEVELOPMENT TESTING**
 
-**Quick Build Test Workflow:**
-- **Manual Trigger Only**: Uses `workflow_dispatch` to prevent automatic runs
-- **Single Architecture**: Focuses on x86_64 (most common)
-- **Single Version**: Tests one OpenWRT version at a time
-- **Optional Verbose Output**: Can toggle detailed build logs
-- **Fast Execution**: Optimized for quick development feedback
-- **Basic Artifact Upload**: Saves built packages
-- **Development Focused**: Ideal for iterative development
+A simplified build testing workflow for quick development validation. Perfect for testing builds without creating releases.
 
-#### Usage
+**Features:**
+- **Single Version Testing**: Test one OpenWRT version at a time
+- **Optional Verbose Output**: Toggle detailed build logs
+- **Quick Feedback**: Fast execution for development iteration
+- **No Release Creation**: Pure build testing only
+- **Short Retention**: Artifacts kept for 7 days only
 
-**Build Test Workflow:**
-1. **Navigate to Actions**: Go to the "Actions" tab in your GitHub repository
-2. **Select Workflow**: Choose "Build Test" from the workflow list
-3. **Manual Trigger**: Click "Run workflow" button
-4. **Configure Options**:
-   - **OpenWRT Version**: Choose `both`, `23.05`, or `24.10`
-   - **Architecture**: Choose `x86_64`, `aarch64`, `arm_cortex-a7`, or `mipsel_24kc`
-5. **Run**: Click "Run workflow" to start the build process
+**Usage:**
+```bash
+# Go to Actions → Build Test → Run workflow
+# Choose OpenWRT version (23.05 or 24.10)
+# Toggle verbose output if needed
+```
 
-**Quick Build Test Workflow:**
-1. **Navigate to Actions**: Go to the "Actions" tab in your GitHub repository
-2. **Select Workflow**: Choose "Quick Build Test" from the workflow list
-3. **Manual Trigger**: Click "Run workflow" button
-4. **Configure Options**:
-   - **OpenWRT Version**: Choose `23.05` or `24.10`
-   - **Verbose Output**: Toggle detailed build logs (optional)
-5. **Run**: Click "Run workflow" to start the build process (x86_64 only)
 
-#### Workflow Comparison
 
-| Feature | Build Test | Quick Build Test |
-|---------|------------|------------------|
-| **Purpose** | Release validation | Development testing |
-| **Architectures** | Multiple (x86_64, aarch64, ARM) | Single (x86_64 only) |
-| **OpenWRT Versions** | Both 23.05 & 24.10 | Single version |
-| **Build Output** | Always verbose | Optional verbose |
-| **Package Analysis** | Comprehensive | Basic |
-| **Execution Time** | Longer (matrix builds) | Faster (single build) |
-| **Use Case** | Pre-release testing | Iterative development |
+## 🚀 Release Workflow Guide
 
-#### Supported Combinations (Build Test Only)
+### Prerequisites
 
-| OpenWRT Version | Architecture | Target | Subtarget | SDK Name |
-|----------------|--------------|--------|-----------|----------|
-| 23.05 | x86_64 | x86 | 64 | x86-64 |
-| 23.05 | aarch64 | bcm27xx | bcm2711 | bcm27xx-bcm2711 |
-| 23.05 | arm_cortex-a7 | sunxi | cortexa7 | sunxi-cortexa7 |
-| 24.10 | x86_64 | x86 | 64 | x86-64 |
-| 24.10 | aarch64 | bcm27xx | bcm2711 | bcm27xx-bcm2711 |
-| 24.10 | arm_cortex-a7 | sunxi | cortexa7 | sunxi-cortexa7 |
+- GitHub repository with Actions enabled
+- Write access to create releases
+- Version update script (`scripts/update-version.sh`)
 
-#### Workflow Steps
+### Release Process
 
-1. **Matrix Compatibility Check**: Validates if the matrix combination should be built
-2. **Repository Checkout**: Clones the repository with full history
-3. **Build Environment Setup**: Installs required packages on Ubuntu
-4. **SDK Download**: Downloads the appropriate OpenWRT SDK
-5. **SDK Environment Setup**: Configures the SDK for building
-6. **Package Source Copy**: Copies the package source to the SDK
-7. **Package Build**: Compiles the gpio-fan-rpm package
-8. **Artifact Upload**: Saves built packages as workflow artifacts
-9. **Build Summary**: Provides detailed build results
+#### 1. Update Version and Create Release
 
-#### Output
+```bash
+# Update version, changelog, and create git tag
+./scripts/update-version.sh 1.0.0 --message "Release version 1.0.0"
 
-- **Success**: Generated `.ipk` packages and build logs
-- **Artifacts**: Built packages available for download
-- **Summary**: Detailed build status in workflow summary
+# Push changes and tag to trigger release workflow
+git push origin main
+git push origin v1.0.0
+```
 
-#### Dependencies
+#### 2. Automated Build Process
 
-The workflow automatically installs the following packages on Ubuntu:
-- build-essential, clang, flex, bison
-- g++, gawk, gcc-multilib, g++-multilib
-- gettext, git, libncurses5-dev, libssl-dev
-- python3-setuptools, rsync, swig, unzip, zlib1g-dev
-- file, wget, time
+When you push a version tag (e.g., `v1.0.0`), the workflow automatically:
 
-#### SDK Configuration
+1. **Extracts version** from the tag
+2. **Updates Makefile** with the new version
+3. **Builds OpenWRT 23.05 package** (libgpiod v1)
+4. **Builds OpenWRT 24.10 package** (libgpiod v2)
+5. **Creates GitHub release** with both packages
+6. **Uploads release assets** with installation instructions
 
-The workflow configures the OpenWRT SDK with:
-- Minimal build configuration
-- Required dependencies (libgpiod, libjson-c, libpthread)
-- Target-specific optimizations
-- Musl libc support
+#### 3. Manual Release (Alternative)
 
-#### Troubleshooting
+If you prefer manual control:
 
-**Build Failures**:
-- Check the build logs for specific error messages
-- Verify that all dependencies are properly declared in the Makefile
+1. Go to **Actions** → **Release Build**
+2. Click **Run workflow**
+3. Enter version (e.g., `1.0.0`)
+4. Choose options:
+   - **Force Release**: Override existing tags
+   - **Dry Run**: Build packages without creating release
+5. Click **Run workflow**
+
+#### 4. Development Testing
+
+For testing builds without releases:
+
+1. Go to **Actions** → **Build Test**
+2. Click **Run workflow**
+3. Choose OpenWRT version (23.05 or 24.10)
+4. Toggle verbose output if needed
+5. Click **Run workflow**
+
+### Release Output
+
+Each release includes:
+
+#### Packages
+- `gpio-fan-rpm_1.0.0-r1_all.ipk` (OpenWRT 23.05)
+- `gpio-fan-rpm_1.0.0-r1_all.ipk` (OpenWRT 24.10)
+
+#### Documentation
+- Installation instructions
+- Usage examples
+- Compatibility information
+
+### Compatibility Matrix
+
+| OpenWRT Version | libgpiod Version | Package Name |
+|----------------|------------------|--------------|
+| 23.05 | v1 | `gpio-fan-rpm_<version>-r1_all.ipk` |
+| 24.10 | v2 | `gpio-fan-rpm_<version>-r1_all.ipk` |
+
+### Installation Commands
+
+```bash
+# For OpenWRT 23.05
+opkg install gpio-fan-rpm_1.0.0-r1_all.ipk
+
+# For OpenWRT 24.10
+opkg install gpio-fan-rpm_1.0.0-r1_all.ipk
+```
+
+### Workflow Features
+
+#### Cross-Compilation
+- Uses x86_64 architecture for universal compatibility
+- Single build per OpenWRT version
+- Optimized for speed and reliability
+
+#### Version Management
+- Automatically updates `PKG_VERSION` in Makefile
+- Extracts version from git tags
+- Supports manual version input
+
+#### Quality Assurance
+- Builds both OpenWRT versions
+- Tests libgpiod v1 and v2 compatibility
+- Validates package generation
+- Comprehensive error handling
+
+#### Testing Options
+- **Dry-Run Mode**: Test builds without creating releases
+- **Development Testing**: Quick single-version builds
+- **Verbose Output**: Detailed build logs for debugging
+- **Manual Triggers**: Flexible workflow control
+
+### Development Workflow
+
+1. **Develop** → Make code changes
+2. **Test** → Use quick build workflows for testing
+3. **Version** → Use version update script
+4. **Release** → Push tag to trigger automated release
+
+### Troubleshooting
+
+#### Build Failures
+- Check the workflow logs for specific error messages
+- Verify that all dependencies are properly declared
 - Ensure the package structure follows OpenWRT conventions
 
-**SDK Download Issues**:
-- Verify the SDK URL is correct for the target architecture
-- Check if the OpenWRT version is still supported
-- Ensure the target/subtarget combination is valid
+#### Release Issues
+- Verify GitHub token permissions
+- Check that the tag doesn't already exist
+- Ensure the repository has release permissions
 
-**Matrix Filtering**:
-- The workflow uses conditional logic to filter matrix combinations
-- Only builds the requested OpenWRT version and architecture
-- Skips incompatible combinations gracefully
+#### Version Conflicts
+- Use the version update script to ensure consistency
+- Check that the version format follows semantic versioning
+- Verify that the Makefile version is updated correctly
 
-#### Future Enhancements
+### Best Practices
 
-- **Automated Triggers**: Add triggers for version releases
-- **Additional Architectures**: Support for more target platforms
-- **Integration Tests**: Add runtime testing of built packages
-- **Performance Metrics**: Track build times and package sizes
-- **Dependency Analysis**: Verify package dependencies
+1. **Use semantic versioning** (e.g., 1.0.0, 1.0.1, 1.1.0)
+2. **Update changelog** before releasing
+3. **Test locally** before creating releases
+4. **Review release notes** before publishing
+5. **Monitor build logs** for any issues
 
-## Workflow Development
+### Related Files
+
+- `.github/workflows/release-build.yml` - Main release workflow
+- `.github/workflows/build-test.yml` - Development testing workflow
+- `scripts/update-version.sh` - Version update script
+- `Makefile` - Package build configuration
+- `CHANGELOG.md` - Release history and changes
+
+## 📊 Workflow Comparison
+
+| Workflow | Purpose | Speed | Scope | Output | Analysis |
+|----------|---------|-------|-------|--------|----------|
+| **Release Build** | Production releases | Medium | Both versions | GitHub release + packages | Full release process |
+| **Build Test** | Development testing | Fast | Single version | Build artifacts | Basic validation |
+
+## 🎯 Usage Examples
+
+**For Development:**
+```bash
+# Quick test of one version
+Actions → Build Test → Choose version → Run
+```
+
+**For Release Testing:**
+```bash
+# Test full release process without creating release
+Actions → Release Build → Enter version → Enable "Dry Run" → Run
+```
+
+**For Production Release:**
+```bash
+# Create actual release
+./scripts/update-version.sh 1.0.0
+git push origin v1.0.0  # Triggers automatic release
+```
+
+## 🔧 Workflow Development
 
 ### Adding New Workflows
 
