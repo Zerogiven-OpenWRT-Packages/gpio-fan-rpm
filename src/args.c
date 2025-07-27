@@ -32,7 +32,7 @@
 #endif
 
 void print_usage(const char *prog) {
-    printf("%s %s\n", prog, PKG_TAG_STR);
+    printf("\n%s %s\n", prog, PKG_TAG_STR);
     printf("High-precision fan RPM measurement using GPIO edge detection\n\n");
     
     printf("USAGE\n");
@@ -78,7 +78,7 @@ void print_usage(const char *prog) {
     printf("  • Use --debug to see detailed measurement information\n");
     printf("  • Verify --pulses matches your fan specification\n\n");
     
-    printf("For more information, see: https://github.com/Zerogiven-OpenWRT-Packages/gpio-fan-rpm\n");
+    printf("For more information, see: https://github.com/Zerogiven-OpenWRT-Packages/gpio-fan-rpm\n\n");
 }
 
 int parse_arguments(int argc, char **argv, int **gpios, size_t *ngpio, 
