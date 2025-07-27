@@ -71,11 +71,25 @@ gpio-fan-rpm --gpio=17
 ### Examples
 
 ```bash
-# Basic usage with default settings
+# Basic usage with default settings (2 pulses per revolution)
 gpio-fan-rpm --gpio=17
 
 # Specify custom chip and pulses per revolution
 gpio-fan-rpm --gpio=17 --chip=gpiochip1 --pulses=4
+
+# Debug output to see measurement details
+gpio-fan-rpm --gpio=17 --debug
+```
+
+### Troubleshooting
+
+**Incorrect RPM readings?** Try adjusting the `--pulses` parameter:
+
+- **Noctua fans**: Usually 2 pulses per revolution (default)
+- **Some fans**: May produce 4 or more pulses per revolution
+- **Use `--debug`**: To see detailed measurement information
+
+**Example**: If you get ~7000 RPM with `--pulses=2` but expect ~3000 RPM, try `--pulses=4`
 
 # Continuous monitoring with 4-second measurement interval
 gpio-fan-rpm --gpio=17 --duration=4 --watch

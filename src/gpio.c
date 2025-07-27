@@ -188,12 +188,17 @@ double gpio_measure_rpm(gpio_context_t *ctx, int pulses_per_rev, int duration, i
     
     if (elapsed <= 0.0) return 0.0;
     
+    // Calculate RPM: (pulses / pulses_per_rev) / time * 60
+    // This is equivalent to: frequency(Hz) * 60 / pulses_per_rev
     double revs = (double)count / pulses_per_rev;
     double rpm = revs / elapsed * 60.0;
     
     if (debug) {
         fprintf(stderr, "Counted %u pulses in %.3f s, RPM=%.1f\n", 
                 count, elapsed, rpm);
+        fprintf(stderr, "  Pulses per revolution: %d\n", pulses_per_rev);
+        fprintf(stderr, "  Revolutions: %.2f\n", revs);
+        fprintf(stderr, "  Frequency: %.2f Hz\n", count / elapsed);
     }
     
     return rpm;
