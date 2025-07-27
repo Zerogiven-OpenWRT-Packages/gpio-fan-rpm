@@ -163,29 +163,29 @@ int parse_arguments(int argc, char **argv, int **gpios, size_t *ngpio,
         case 'g':
             // Validate GPIO number format
             if (!optarg || *optarg == '\0') {
-                fprintf(stderr, "Error: --gpio requires a number\n");
+                fprintf(stderr, "\nError: --gpio requires a number\n\n");
                 return -1;
             }
             
             // Check for non-numeric characters
             for (const char *p = optarg; *p; p++) {
                 if (*p < '0' || *p > '9') {
-                    fprintf(stderr, "Error: GPIO pin must be a number (0-999), got '%s'\n", optarg);
-                    fprintf(stderr, "Try: %s --help\n", argv[0]);
+                    fprintf(stderr, "\nError: GPIO pin must be a number (0-999), got '%s'\n\n", optarg);
+                    fprintf(stderr, "Try: %s --help\n\n", argv[0]);
                     return -1;
                 }
             }
             
             int gpio_val = atoi(optarg);
             if (gpio_val < 0 || gpio_val > 999) {
-                fprintf(stderr, "Error: GPIO pin %d is out of valid range (0-999)\n", gpio_val);
-                fprintf(stderr, "Try: %s --help\n", argv[0]);
+                fprintf(stderr, "\nError: GPIO pin %d is out of valid range (0-999)\n\n", gpio_val);
+                fprintf(stderr, "Try: %s --help\n\n", argv[0]);
                 return -1;
             }
             
             *gpios = realloc(*gpios, (*ngpio + 1) * sizeof(**gpios));
             if (!*gpios) {
-                fprintf(stderr, "Error: memory allocation failed\n");
+                fprintf(stderr, "\nError: memory allocation failed\n\n");
                 return -1;
             }
             (*gpios)[*ngpio] = gpio_val;
@@ -196,33 +196,33 @@ int parse_arguments(int argc, char **argv, int **gpios, size_t *ngpio,
             break;
         case 'd': 
             if (!optarg || *optarg == '\0') {
-                fprintf(stderr, "Error: --duration requires a number\n");
-                fprintf(stderr, "Try: %s --help\n", argv[0]);
+                fprintf(stderr, "\nError: --duration requires a number\n\n");
+                fprintf(stderr, "Try: %s --help\n\n", argv[0]);
                 return -1;
             }
             *duration = atoi(optarg);
             if (*duration < 2) {
-                fprintf(stderr, "Error: duration must be at least 2 seconds for accurate measurements\n");
+                fprintf(stderr, "\nError: duration must be at least 2 seconds for accurate measurements\n");
                 fprintf(stderr, "  Minimum 2s allows for 1s warmup + 1s measurement\n");
-                fprintf(stderr, "  For quick tests, try: %s --duration=2\n", argv[0]);
+                fprintf(stderr, "  For quick tests, try: %s --duration=2\n\n", argv[0]);
                 return -1;
             }
             if (*duration > 3600) {
-                fprintf(stderr, "Error: duration must be between 2 and 3600 seconds\n");
-                fprintf(stderr, "Try: %s --help\n", argv[0]);
+                fprintf(stderr, "\nError: duration must be between 2 and 3600 seconds\n\n");
+                fprintf(stderr, "Try: %s --help\n\n", argv[0]);
                 return -1;
             }
             break;
         case 'p': 
             if (!optarg || *optarg == '\0') {
-                fprintf(stderr, "Error: --pulses requires a number\n");
-                fprintf(stderr, "Try: %s --help\n", argv[0]);
+                fprintf(stderr, "\nError: --pulses requires a number\n\n");
+                fprintf(stderr, "Try: %s --help\n\n", argv[0]);
                 return -1;
             }
             *pulses = atoi(optarg);
             if (*pulses < 1 || *pulses > 100) {
-                fprintf(stderr, "Error: pulses must be between 1 and 100\n");
-                fprintf(stderr, "Try: %s --help\n", argv[0]);
+                fprintf(stderr, "\nError: pulses must be between 1 and 100\n\n");
+                fprintf(stderr, "Try: %s --help\n\n", argv[0]);
                 return -1;
             }
             break;
@@ -266,8 +266,8 @@ int validate_arguments(int *gpios, size_t ngpio, int duration, int pulses, const
     (void)pulses;    // Unused parameter - validation done during parsing
     
     if (ngpio == 0) {
-        fprintf(stderr, "Error: at least one --gpio required\n");
-        fprintf(stderr, "Try: %s --help\n", prog);
+        fprintf(stderr, "\nError: at least one --gpio required\n\n");
+        fprintf(stderr, "Try: %s --help\n\n", prog);
         return -1;
     }
     
@@ -275,8 +275,8 @@ int validate_arguments(int *gpios, size_t ngpio, int duration, int pulses, const
     for (size_t i = 0; i < ngpio; i++) {
         for (size_t j = i + 1; j < ngpio; j++) {
             if (gpios[i] == gpios[j]) {
-                fprintf(stderr, "Error: GPIO pin %d specified multiple times\n", gpios[i]);
-                fprintf(stderr, "Try: %s --help\n", prog);
+                fprintf(stderr, "\nError: GPIO pin %d specified multiple times\n\n", gpios[i]);
+                fprintf(stderr, "Try: %s --help\n\n", prog);
                 return -1;
             }
         }
