@@ -108,7 +108,7 @@ jobs:
               apt update && apt install -y libunwind-dev
               
               # Switch to buildbot user for the rest of the build
-              su buildbot -c '
+              su buildbot
 
               # Run setup script to download SDK binaries (required for 24.10+)
               /builder/setup.sh
@@ -145,5 +145,4 @@ jobs:
                 echo "❌ OpenWRT 24.10 build failed"
                 exit 1
               fi
-              '
             " 
