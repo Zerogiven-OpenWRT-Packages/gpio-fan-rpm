@@ -38,24 +38,24 @@ jobs:
         run: |
           echo "Building for OpenWRT 23.05 using Docker..."
           
-          # Use official OpenWrt Docker container
+          # Use official OpenWrt Docker container (following official example)
           docker run --rm \
-            -v $GITHUB_WORKSPACE:/workspace \
-            -v $GITHUB_WORKSPACE/bin:/builder/bin \
-            -w /workspace \
-            --user buildbot \
+            -v $GITHUB_WORKSPACE/bin/:/builder/bin \
             openwrt/sdk:x86-64-v23.05.0 \
             bash -c "
               # Update feeds (following OpenWrt SDK example)
               ./scripts/feeds update packages
               
+              # Make defconfig (following OpenWrt SDK example)
+              make defconfig
+              
               # Install only the packages we need
               ./scripts/feeds install libgpiod
               ./scripts/feeds install libjson-c
               
-              # Copy package source (as buildbot user)
+              # Copy package source
               mkdir -p package/gpio-fan-rpm
-              cp -r /workspace/* package/gpio-fan-rpm/
+              cp -r /builder/bin/* package/gpio-fan-rpm/
               
               # Build package (following OpenWrt SDK example)
               if [ '${{ github.event.inputs.verbose }}' = 'true' ]; then
@@ -92,12 +92,9 @@ jobs:
         run: |
           echo "Building for OpenWRT 24.10 using Docker..."
           
-          # Use official OpenWrt Docker container
+          # Use official OpenWrt Docker container (following official example)
           docker run --rm \
-            -v $GITHUB_WORKSPACE:/workspace \
-            -v $GITHUB_WORKSPACE/bin:/builder/bin \
-            -w /workspace \
-            --user buildbot \
+            -v $GITHUB_WORKSPACE/bin/:/builder/bin \
             openwrt/sdk:x86_64-v24.10.0 \
             bash -c "
               # Run setup script to download SDK binaries (required for 24.10+)
@@ -106,13 +103,16 @@ jobs:
               # Update feeds (following OpenWrt SDK example)
               ./scripts/feeds update packages
               
+              # Make defconfig (following OpenWrt SDK example)
+              make defconfig
+              
               # Install only the packages we need
               ./scripts/feeds install libgpiod
               ./scripts/feeds install libjson-c
               
-              # Copy package source (as buildbot user)
+              # Copy package source
               mkdir -p package/gpio-fan-rpm
-              cp -r /workspace/* package/gpio-fan-rpm/
+              cp -r /builder/bin/* package/gpio-fan-rpm/
               
               # Build package (following OpenWrt SDK example)
               if [ '${{ github.event.inputs.verbose }}' = 'true' ]; then
