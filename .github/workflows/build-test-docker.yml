@@ -37,7 +37,7 @@ jobs:
           docker run --rm \
             -v $GITHUB_WORKSPACE:/workspace \
             -w /workspace \
-            openwrt/sdk:23.05-x86-64 \
+            openwrt/sdk:x86-64-v23.05.0 \
             bash -c "
               # Update feeds
               ./scripts/feeds update -a
@@ -84,7 +84,7 @@ jobs:
           docker run --rm \
             -v $GITHUB_WORKSPACE:/workspace \
             -w /workspace \
-            openwrt/sdk:24.10-x86-64 \
+            openwrt/sdk:x86_64-v24.10.0 \
             bash -c "
               # Update feeds
               ./scripts/feeds update -a
