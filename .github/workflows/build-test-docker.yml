@@ -43,7 +43,7 @@ jobs:
             -v $GITHUB_WORKSPACE:/workspace \
             -v $GITHUB_WORKSPACE/bin:/builder/bin \
             -w /workspace \
-            openwrt/sdk:x86-64-23.05.0 \
+            openwrt/sdk:x86-64-v23.05.0 \
             bash -c "
               # Update feeds (following OpenWrt SDK example)
               ./scripts/feeds update packages
@@ -96,7 +96,7 @@ jobs:
             -v $GITHUB_WORKSPACE:/workspace \
             -v $GITHUB_WORKSPACE/bin:/builder/bin \
             -w /workspace \
-            openwrt/sdk:x86-64-24.10.0 \
+            openwrt/sdk:x86_64-v24.10.0 \
             bash -c "
               # Run setup.sh to download SDK binaries (required for 24.10+)
               ./setup.sh
