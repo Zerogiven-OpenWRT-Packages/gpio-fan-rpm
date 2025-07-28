@@ -15,7 +15,9 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <errno.h>
+#ifdef UCI_SUPPORT
 #include <uci.h>
+#endif
 #include "args.h"
 
 #ifndef PKG_TAG
@@ -54,6 +56,7 @@ int load_uci_defaults(int *duration, int *pulses) {
         return 1; // Debug enabled
     }
     
+#ifdef UCI_SUPPORT
     // Then load UCI configuration (lower precedence)
     struct uci_context *ctx = uci_alloc_context();
     if (!ctx) return -1;
@@ -81,6 +84,7 @@ int load_uci_defaults(int *duration, int *pulses) {
     }
     
     uci_free_context(ctx);
+#endif
     return 0; // Debug disabled
 }
 

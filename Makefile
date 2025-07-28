@@ -36,7 +36,7 @@ define Package/$(PKG_NAME)
   SECTION:=utils
   CATEGORY:=Utilities
   TITLE:=GPIO Fan RPM Monitor
-  DEPENDS:=+libgpiod +libjson-c +libpthread +librt +libubox +libuci
+  DEPENDS:=+libgpiod +libjson-c +libpthread +librt
   PKGARCH:=all
 endef
 
@@ -63,7 +63,7 @@ TARGET_CFLAGS += -Wall -Wextra -pthread $(FPIC) \
 # Add libgpiod version to CFLAGS
 TARGET_CFLAGS += -DLIBGPIOD_VERSION=\"$(LIBGPIOD_VERSION)\"
 
-TARGET_LDFLAGS += -pthread -lrt -luci -lubox
+TARGET_LDFLAGS += -pthread -lrt
 
 # Pass library search paths explicitly using standard OpenWRT variables
 define Build/Compile
@@ -71,15 +71,12 @@ define Build/Compile
 		CC="$(TARGET_CC)" \
 		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include" \
 		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib" \
-		LIB="-lgpiod -ljson-c -lpthread -lrt -luci -lubox"
+		LIB="-lgpiod -ljson-c -lpthread -lrt"
 endef
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/gpio-fan-rpm $(1)/usr/sbin/gpio-fan-rpm
-	
-	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) ./files/etc/config/gpio-fan-rpm $(1)/etc/config/
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME))) 
