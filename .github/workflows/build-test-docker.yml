@@ -48,9 +48,11 @@ jobs:
               # Update feeds
               ./scripts/feeds update packages
               
-              # Install only the packages we need
+              # Install required packages and their dependencies
               ./scripts/feeds install libgpiod
               ./scripts/feeds install libjson-c
+              ./scripts/feeds install libubox
+              ./scripts/feeds install libuci
               
               # Create initial configuration (prevents menuconfig from running)
               make defconfig
@@ -106,9 +108,11 @@ jobs:
               # Update feeds
               ./scripts/feeds update packages
               
-              # Install only the packages we need
+              # Install required packages and their dependencies
               ./scripts/feeds install libgpiod
               ./scripts/feeds install libjson-c
+              ./scripts/feeds install libubox
+              ./scripts/feeds install libuci
               
               # Create initial configuration (prevents menuconfig from running)
               make defconfig
