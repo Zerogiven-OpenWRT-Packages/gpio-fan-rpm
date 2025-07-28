@@ -21,7 +21,7 @@ on:
 
 # Environment variables
 env:
-  OPENWRT_23_05_VERSION: "23.05.3"
+  OPENWRT_23_05_VERSION: "23.05.0"
   OPENWRT_24_10_VERSION: "24.10.0"
   SDK_BASE_URL: "https://downloads.openwrt.org/releases"
   TARGET_ARCH: "x86_64"
@@ -37,7 +37,7 @@ jobs:
       matrix:
         include:
           - openwrt_version: "23.05"
-            openwrt_full_version: "23.05.3"
+            openwrt_full_version: "23.05.0"
             libgpiod_version: "v1"
           - openwrt_version: "24.10"
             openwrt_full_version: "24.10.0"
@@ -83,27 +83,38 @@ jobs:
             zlib1g-dev \
             file \
             wget \
-            time
+            time \
+            zstd
 
       - name: Download OpenWRT SDK
         run: |
           echo "Downloading OpenWRT ${{ matrix.openwrt_full_version }} SDK for $TARGET_ARCH..."
           
-          # Download SDK
-          SDK_URL="${SDK_BASE_URL}/${{ matrix.openwrt_full_version }}/targets/${TARGET}/${SUBTARGET}/openwrt-sdk-${SDK_NAME}-generic_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+          # Set SDK URL based on version
+          if [ "${{ matrix.openwrt_version }}" = "23.05" ]; then
+            SDK_URL="https://downloads.openwrt.org/releases/23.05.0/targets/x86/64/openwrt-sdk-23.05.0-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+            SDK_FILE="openwrt-sdk.tar.xz"
+          else
+            SDK_URL="https://mirror-03.infra.openwrt.org/releases/24.10.0/targets/x86/64/openwrt-sdk-24.10.0-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+            SDK_FILE="openwrt-sdk.tar.zst"
+          fi
           
           echo "SDK URL: $SDK_URL"
           
-          # Download and extract SDK
-          wget -q "$SDK_URL" -O openwrt-sdk.tar.xz
+          # Download SDK
+          wget -q "$SDK_URL" -O "$SDK_FILE"
           
-          if [ ! -f openwrt-sdk.tar.xz ]; then
+          if [ ! -f "$SDK_FILE" ]; then
             echo "Failed to download SDK from $SDK_URL"
             exit 1
           fi
           
-          # Extract SDK
-          tar -xf openwrt-sdk.tar.xz
+          # Extract SDK (handle both .tar.xz and .tar.zst)
+          if [[ "$SDK_FILE" == *.zst ]]; then
+            tar -xf "$SDK_FILE" --use-compress-program=zstd
+          else
+            tar -xf "$SDK_FILE"
+          fi
           
           # Find SDK directory
           SDK_DIR=$(find . -maxdepth 1 -name "openwrt-sdk-*" -type d | head -1)

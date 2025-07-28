@@ -8,7 +8,7 @@ on:
 
 # Environment variables
 env:
-  OPENWRT_23_05_VERSION: "23.05.3"
+  OPENWRT_23_05_VERSION: "23.05.0"
   OPENWRT_24_10_VERSION: "24.10.0"
   SDK_BASE_URL: "https://downloads.openwrt.org/releases"
   TARGET_ARCH: "x86_64"  # Use x86_64 for cross-compilation
@@ -67,7 +67,8 @@ jobs:
             file \
             wget \
             time \
-            jq
+            jq \
+            zstd
 
       - name: Verify Makefile version matches tag
         run: |
@@ -91,9 +92,9 @@ jobs:
         run: |
           echo "Building for OpenWRT 23.05..."
           
-          # Download SDK
-          SDK_URL="${SDK_BASE_URL}/${OPENWRT_23_05_VERSION}/targets/${TARGET}/${SUBTARGET}/openwrt-sdk-${SDK_NAME}-generic_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
-          wget -q "$SDK_URL" -O openwrt-sdk-23.05.tar.xz
+          # Download SDK for 23.05
+          SDK_URL_23_05="https://downloads.openwrt.org/releases/23.05.0/targets/x86/64/openwrt-sdk-23.05.0-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+          wget -q "$SDK_URL_23_05" -O openwrt-sdk-23.05.tar.xz
           tar -xf openwrt-sdk-23.05.tar.xz
           SDK_DIR_23_05=$(find . -maxdepth 1 -name "openwrt-sdk-*" -type d | head -1)
           
@@ -150,10 +151,10 @@ jobs:
         run: |
           echo "Building for OpenWRT 24.10..."
           
-          # Download SDK
-          SDK_URL="${SDK_BASE_URL}/${OPENWRT_24_10_VERSION}/targets/${TARGET}/${SUBTARGET}/openwrt-sdk-${SDK_NAME}-generic_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
-          wget -q "$SDK_URL" -O openwrt-sdk-24.10.tar.xz
-          tar -xf openwrt-sdk-24.10.tar.xz
+          # Download SDK for 24.10
+          SDK_URL_24_10="https://mirror-03.infra.openwrt.org/releases/24.10.0/targets/x86/64/openwrt-sdk-24.10.0-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+          wget -q "$SDK_URL_24_10" -O openwrt-sdk-24.10.tar.zst
+          tar -xf openwrt-sdk-24.10.tar.zst --use-compress-program=zstd
           SDK_DIR_24_10=$(find . -maxdepth 1 -name "openwrt-sdk-*" -type d | head -1)
           
           # Setup SDK
