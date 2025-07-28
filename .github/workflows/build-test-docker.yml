@@ -1,0 +1,115 @@
+name: Build Test (Docker)
+
+# Manual workflow trigger only - for development testing
+on:
+  workflow_dispatch:
+    inputs:
+      openwrt_version:
+        description: 'OpenWRT version to test'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - '23.05'
+          - '24.10'
+          - 'both'
+      verbose:
+        description: 'Verbose build output'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build-test-23-05:
+    name: Build Test - OpenWRT 23.05 (Docker)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.openwrt_version == '23.05' || github.event.inputs.openwrt_version == 'both' }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build OpenWRT 23.05 package
+        run: |
+          echo "Building for OpenWRT 23.05 using Docker..."
+          
+          # Use official OpenWrt Docker container
+          docker run --rm \
+            -v $GITHUB_WORKSPACE:/workspace \
+            -w /workspace \
+            openwrt/sdk:23.05-x86-64 \
+            bash -c "
+              # Update feeds
+              ./scripts/feeds update -a
+              
+              # Install only the packages we need
+              ./scripts/feeds install libgpiod
+              ./scripts/feeds install libjson-c
+              
+              # Copy package source
+              mkdir -p package/gpio-fan-rpm
+              cp -r /workspace/* package/gpio-fan-rpm/
+              
+              # Build package
+              if [ '${{ github.event.inputs.verbose }}' = 'true' ]; then
+                make package/gpio-fan-rpm/compile V=s
+              else
+                make package/gpio-fan-rpm/compile
+              fi
+              
+              # Check if build was successful
+              if [ -f bin/packages/*/base/gpio-fan-rpm_*.ipk ]; then
+                echo '✅ OpenWRT 23.05 build successful'
+                ls -la bin/packages/*/base/gpio-fan-rpm_*.ipk
+              else
+                echo '❌ OpenWRT 23.05 build failed'
+                exit 1
+              fi
+            "
+
+  build-test-24-10:
+    name: Build Test - OpenWRT 24.10 (Docker)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.openwrt_version == '24.10' || github.event.inputs.openwrt_version == 'both' }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build OpenWRT 24.10 package
+        run: |
+          echo "Building for OpenWRT 24.10 using Docker..."
+          
+          # Use official OpenWrt Docker container
+          docker run --rm \
+            -v $GITHUB_WORKSPACE:/workspace \
+            -w /workspace \
+            openwrt/sdk:24.10-x86-64 \
+            bash -c "
+              # Update feeds
+              ./scripts/feeds update -a
+              
+              # Install only the packages we need
+              ./scripts/feeds install libgpiod
+              ./scripts/feeds install libjson-c
+              
+              # Copy package source
+              mkdir -p package/gpio-fan-rpm
+              cp -r /workspace/* package/gpio-fan-rpm/
+              
+              # Build package
+              if [ '${{ github.event.inputs.verbose }}' = 'true' ]; then
+                make package/gpio-fan-rpm/compile V=s
+              else
+                make package/gpio-fan-rpm/compile
+              fi
+              
+              # Check if build was successful
+              if [ -f bin/packages/*/base/gpio-fan-rpm_*.ipk ]; then
+                echo '✅ OpenWRT 24.10 build successful'
+                ls -la bin/packages/*/base/gpio-fan-rpm_*.ipk
+              else
+                echo '❌ OpenWRT 24.10 build failed'
+                exit 1
+              fi
+            " 

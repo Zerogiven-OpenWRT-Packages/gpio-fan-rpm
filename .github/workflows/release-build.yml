@@ -101,33 +101,10 @@ jobs:
           # Setup SDK
           cd $SDK_DIR_23_05
           ./scripts/feeds update -a
-          ./scripts/feeds install -a
           
-          # Configure
-          cat > .config << EOF
-          CONFIG_TARGET_x86=y
-          CONFIG_TARGET_x86_64=y
-          CONFIG_TARGET_x86_64_DEVICE_generic=y
-          CONFIG_HAS_SUBTARGETS=y
-          CONFIG_HAS_DEVICES=y
-          CONFIG_TARGET_BOARD="x86"
-          CONFIG_TARGET_SUBTARGET="64"
-          CONFIG_TARGET_PROFILE="generic"
-          CONFIG_TARGET_ARCH_PACKAGES=""
-          CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe -march=x86-64"
-          CONFIG_TARGET_OPTIMIZATION="-Os -pipe -march=x86-64"
-          CONFIG_LIBC="musl"
-          CONFIG_LIBC_VERSION="1.2.4"
-          CONFIG_TARGET_SUFFIX="generic"
-          CONFIG_USE_SSTRIP=y
-          CONFIG_STRIP_ARGS="--strip-all"
-          CONFIG_USE_MKLIBS=y
-          CONFIG_PACKAGE_libgpiod=y
-          CONFIG_PACKAGE_libjson-c=y
-          CONFIG_PACKAGE_libpthread=y
-          EOF
-          
-          make defconfig
+          # Install only the packages we need (not all packages)
+          ./scripts/feeds install libgpiod
+          ./scripts/feeds install libjson-c
           
           # Copy package source
           mkdir -p package/gpio-fan-rpm
@@ -160,33 +137,10 @@ jobs:
           # Setup SDK
           cd $SDK_DIR_24_10
           ./scripts/feeds update -a
-          ./scripts/feeds install -a
           
-          # Configure
-          cat > .config << EOF
-          CONFIG_TARGET_x86=y
-          CONFIG_TARGET_x86_64=y
-          CONFIG_TARGET_x86_64_DEVICE_generic=y
-          CONFIG_HAS_SUBTARGETS=y
-          CONFIG_HAS_DEVICES=y
-          CONFIG_TARGET_BOARD="x86"
-          CONFIG_TARGET_SUBTARGET="64"
-          CONFIG_TARGET_PROFILE="generic"
-          CONFIG_TARGET_ARCH_PACKAGES=""
-          CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe -march=x86-64"
-          CONFIG_TARGET_OPTIMIZATION="-Os -pipe -march=x86-64"
-          CONFIG_LIBC="musl"
-          CONFIG_LIBC_VERSION="1.2.4"
-          CONFIG_TARGET_SUFFIX="generic"
-          CONFIG_USE_SSTRIP=y
-          CONFIG_STRIP_ARGS="--strip-all"
-          CONFIG_USE_MKLIBS=y
-          CONFIG_PACKAGE_libgpiod=y
-          CONFIG_PACKAGE_libjson-c=y
-          CONFIG_PACKAGE_libpthread=y
-          EOF
-          
-          make defconfig
+          # Install only the packages we need (not all packages)
+          ./scripts/feeds install libgpiod
+          ./scripts/feeds install libjson-c
           
           # Copy package source
           mkdir -p package/gpio-fan-rpm
