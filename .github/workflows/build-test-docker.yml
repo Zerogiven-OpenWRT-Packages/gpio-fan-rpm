@@ -36,7 +36,7 @@ jobs:
           V: ${{ github.event.inputs.verbose == 'true' && 's' || '0' }}
 
       - name: Store packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: openwrt-23.05-packages
           path: bin/packages/x86_64/packages/gpio-fan-rpm_*.ipk
@@ -58,7 +58,7 @@ jobs:
           V: ${{ github.event.inputs.verbose == 'true' && 's' || '0' }}
 
       - name: Store packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: openwrt-24.10-packages
           path: bin/packages/x86_64/packages/gpio-fan-rpm_*.ipk 
