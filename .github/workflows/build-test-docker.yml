@@ -52,6 +52,9 @@ jobs:
               ./scripts/feeds install libgpiod
               ./scripts/feeds install libjson-c
               
+              # Create initial configuration (prevents menuconfig from running)
+              make defconfig
+              
               # Copy the repo into package/gpio-fan-rpm/
               mkdir -p package/gpio-fan-rpm
               cp -r /workspace/* package/gpio-fan-rpm/
@@ -106,6 +109,9 @@ jobs:
               # Install only the packages we need
               ./scripts/feeds install libgpiod
               ./scripts/feeds install libjson-c
+              
+              # Create initial configuration (prevents menuconfig from running)
+              make defconfig
               
               # Copy the repo into package/gpio-fan-rpm/
               mkdir -p package/gpio-fan-rpm
