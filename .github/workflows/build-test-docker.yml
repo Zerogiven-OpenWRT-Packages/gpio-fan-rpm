@@ -129,6 +129,8 @@ jobs:
               mkdir -p package/gpio-fan-rpm
               cp -r /workspace/* package/gpio-fan-rpm/
 
+              export NINJA=no
+
               if [ '${{ github.event.inputs.verbose }}' = 'true' ]; then
                 # make package/gpio-fan-rpm/compile V=s -j$(nproc)
                 make package/gpio-fan-rpm/compile V=s -j1
