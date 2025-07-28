@@ -99,14 +99,11 @@ jobs:
           echo "Building for OpenWRT 24.10 using Docker..."
           
           # Use official OpenWrt Docker container
-          docker run --rm --user=root \
+          docker run --rm \
             -v $GITHUB_WORKSPACE:/workspace \
             -v $GITHUB_WORKSPACE/bin/:/builder/bin \
             openwrt/sdk:x86_64-v24.10.0 \
             bash -c "
-              # Switch to buildbot user for the rest of the build
-              su buildbot
-
               # Run setup script to download SDK binaries (required for 24.10+)
               /builder/setup.sh
 
