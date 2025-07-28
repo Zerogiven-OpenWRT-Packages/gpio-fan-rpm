@@ -1,18 +1,17 @@
-name: Build Test (Docker)
+name: Build Test - OpenWrt Package
 
-# Manual workflow trigger only - for development testing
 on:
   workflow_dispatch:
     inputs:
       openwrt_version:
-        description: 'OpenWRT version to test'
+        description: 'OpenWrt version to test'
         required: true
         default: 'both'
         type: choice
         options:
-          - '23.05'
-          - '24.10'
-          - 'both'
+        - '23.05'
+        - '24.10'
+        - 'both'
       verbose:
         description: 'Verbose build output'
         required: false
@@ -21,7 +20,7 @@ on:
 
 jobs:
   build-test-23-05:
-    name: Build Test - OpenWRT 23.05 (Docker)
+    name: Build Test - OpenWrt 23.05
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.openwrt_version == '23.05' || github.event.inputs.openwrt_version == 'both' }}
     
@@ -29,58 +28,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare build directory
-        run: |
-          # Create bin directory with proper permissions for output
-          mkdir -p bin
-          chmod 777 bin
+      - name: Build OpenWrt 23.05 package
+        uses: openwrt/gh-action-sdk@main
+        env:
+          ARCH: x86_64-23.05.0
+          PACKAGES: gpio-fan-rpm
+          V: ${{ github.event.inputs.verbose == 'true' && 's' || '0' }}
 
-      - name: Build OpenWRT 23.05 package
-        run: |
-          echo "Building for OpenWRT 23.05 using Docker..."
-          
-          # Use official OpenWrt Docker container
-          docker run --rm \
-            -v $GITHUB_WORKSPACE:/workspace \
-            -v $GITHUB_WORKSPACE/bin/:/builder/bin \
-            openwrt/sdk:x86-64-v23.05.0 \
-            bash -c "
-              # Update feeds
-              ./scripts/feeds update packages
-              
-              # Install required packages and their dependencies
-              ./scripts/feeds install libgpiod
-              ./scripts/feeds install libjson-c
-              ./scripts/feeds install libubox
-              ./scripts/feeds install libuci
-              
-
-              
-              # Create initial configuration (prevents menuconfig from running)
-              make defconfig
-              
-              # Copy the repo into package/gpio-fan-rpm/
-              mkdir -p package/gpio-fan-rpm
-              cp -r /workspace/* package/gpio-fan-rpm/
-              
-              if [ '${{ github.event.inputs.verbose }}' = 'true' ]; then
-                make package/gpio-fan-rpm/compile V=s -j$(nproc)
-              else
-                make package/gpio-fan-rpm/compile -j$(nproc)
-              fi
-              
-              # Check if build was successful
-              if [ -f bin/packages/*/base/gpio-fan-rpm_*.ipk ]; then
-                echo '✅ OpenWRT 23.05 build successful'
-                ls -la bin/packages/*/base/gpio-fan-rpm_*.ipk
-              else
-                echo '❌ OpenWRT 23.05 build failed'
-                exit 1
-              fi
-            "
+      - name: Store packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: openwrt-23.05-packages
+          path: bin/packages/x86_64/packages/gpio-fan-rpm_*.ipk
 
   build-test-24-10:
-    name: Build Test - OpenWRT 24.10 (Docker)
+    name: Build Test - OpenWrt 24.10
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.openwrt_version == '24.10' || github.event.inputs.openwrt_version == 'both' }}
     
@@ -88,63 +50,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare build directory
-        run: |
-          # Create bin directory with proper permissions for output
-          mkdir -p bin
-          chmod 777 bin
+      - name: Build OpenWrt 24.10 package
+        uses: openwrt/gh-action-sdk@main
+        env:
+          ARCH: x86_64-24.10.0
+          PACKAGES: gpio-fan-rpm
+          V: ${{ github.event.inputs.verbose == 'true' && 's' || '0' }}
 
-      - name: Build OpenWRT 24.10 package
-        run: |
-          echo "Building for OpenWRT 24.10 using Docker..."
-          
-          # Use official OpenWrt Docker container
-          docker run --rm --user=root \
-            -v $GITHUB_WORKSPACE:/workspace \
-            -v $GITHUB_WORKSPACE/bin/:/builder/bin \
-            openwrt/sdk:x86_64-v24.10.0 \
-            bash -c "
-              apt update
-              apt install -y libunwind-dev ninja-build
-
-              su buildbot
-
-              # Run setup script to download SDK binaries (required for 24.10+)
-              /builder/setup.sh
-
-              # Update feeds
-              ./scripts/feeds update packages
-              
-              # Install required packages and their dependencies
-              ./scripts/feeds install libgpiod
-              ./scripts/feeds install libjson-c
-              ./scripts/feeds install libubox
-              ./scripts/feeds install libuci
-              ./scripts/feeds install gpio-fan-rpm
-              
-              # Create initial configuration (prevents menuconfig from running)
-              make defconfig
-              
-              # Copy the repo into package/gpio-fan-rpm/
-              mkdir -p package/gpio-fan-rpm
-              cp -r /workspace/* package/gpio-fan-rpm/
-
-              export NINJA=no
-
-              if [ '${{ github.event.inputs.verbose }}' = 'true' ]; then
-                # make package/gpio-fan-rpm/compile V=s -j$(nproc)
-                make package/gpio-fan-rpm/compile V=s -j1
-              else
-                # make package/gpio-fan-rpm/compile -j$(nproc)
-                make package/gpio-fan-rpm/compile -j1
-              fi
-              
-              # Check if build was successful
-              if [ -f bin/packages/*/base/gpio-fan-rpm_*.ipk ]; then
-                echo "✅ OpenWRT 24.10 build successful"
-                ls -la bin/packages/*/base/gpio-fan-rpm_*.ipk
-              else
-                echo "❌ OpenWRT 24.10 build failed"
-                exit 1
-              fi
-            " 
+      - name: Store packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: openwrt-24.10-packages
+          path: bin/packages/x86_64/packages/gpio-fan-rpm_*.ipk 
