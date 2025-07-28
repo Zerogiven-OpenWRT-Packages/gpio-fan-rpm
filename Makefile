@@ -17,6 +17,8 @@ PKG_COPYRIGHT_YEAR := $(shell date +%Y)
 
 PKG_BUILD_DEPENDS:=libgpiod libjson-c glib2/host
 
+HOST_BUILD_DEPENDS:=ninja/host
+
 # Detect libgpiod version by checking header files
 # This is the most reliable method for OpenWRT builds
 LIBGPIOD_V2_HEADER := $(shell test -f $(STAGING_DIR)/usr/include/gpiod.h && grep -q "gpiod_request_config" $(STAGING_DIR)/usr/include/gpiod.h && echo "yes" || echo "no")
