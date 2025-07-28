@@ -31,8 +31,9 @@ jobs:
 
       - name: Prepare build directory
         run: |
-          # Create bin directory for output (following OpenWrt Docker example)
+          # Create bin directory with proper permissions for output
           mkdir -p bin
+          chmod 777 bin
 
       - name: Build OpenWRT 23.05 package
         run: |
@@ -47,9 +48,6 @@ jobs:
               # Update feeds
               ./scripts/feeds update packages
               
-              # Make defconfig
-              make defconfig
-              
               # Install only the packages we need
               ./scripts/feeds install libgpiod
               ./scripts/feeds install libjson-c
@@ -57,10 +55,6 @@ jobs:
               # Copy the repo into package/gpio-fan-rpm/
               mkdir -p package/gpio-fan-rpm
               cp -r /workspace/* package/gpio-fan-rpm/
-              
-              # Build package following proper steps
-              make package/gpio-fan-rpm/download
-              make package/gpio-fan-rpm/prepare
               
               if [ '${{ github.event.inputs.verbose }}' = 'true' ]; then
                 make package/gpio-fan-rpm/compile V=s -j$(nproc)
@@ -109,9 +103,6 @@ jobs:
               # Update feeds
               ./scripts/feeds update packages
               
-              # Make defconfig
-              make defconfig
-              
               # Install only the packages we need
               ./scripts/feeds install libgpiod
               ./scripts/feeds install libjson-c
@@ -119,10 +110,6 @@ jobs:
               # Copy the repo into package/gpio-fan-rpm/
               mkdir -p package/gpio-fan-rpm
               cp -r /workspace/* package/gpio-fan-rpm/
-              
-              # Build package following proper steps
-              make package/gpio-fan-rpm/download
-              make package/gpio-fan-rpm/prepare
               
               if [ '${{ github.event.inputs.verbose }}' = 'true' ]; then
                 make package/gpio-fan-rpm/compile V=s -j$(nproc)
