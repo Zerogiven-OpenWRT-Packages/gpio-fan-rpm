@@ -99,16 +99,18 @@ jobs:
           echo "Building for OpenWRT 24.10 using Docker..."
           
           # Use official OpenWrt Docker container
-          docker run --rm \
+          docker run --rm --user=root \
             -v $GITHUB_WORKSPACE:/workspace \
             -v $GITHUB_WORKSPACE/bin/:/builder/bin \
             openwrt/sdk:x86_64-v24.10.0 \
             bash -c "
+              apt update
+              apt install -y libunwind-dev ninja-build
+
+              su buildbot
+
               # Run setup script to download SDK binaries (required for 24.10+)
               /builder/setup.sh
-              
-              # Disable ninja for glib2 to avoid cross-compilation issues
-              export NINJA=no
 
               # Update feeds
               ./scripts/feeds update packages
