@@ -30,6 +30,11 @@ jobs:
         with:
           path: feed/gpio-fan-rpm
 
+      - name: Create artifacts directory structure
+        run: |
+          mkdir -p ${{ github.workspace }}/artifacts
+          mkdir -p ${{ github.workspace }}/artifacts/bin/packages/x86_64/packages
+
       - name: Build OpenWrt 23.05 package
         uses: openwrt/gh-action-sdk@main
         env:
@@ -52,6 +57,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: feed/gpio-fan-rpm
+
+      - name: Create artifacts directory structure
+        run: |
+          mkdir -p ${{ github.workspace }}/artifacts
+          mkdir -p ${{ github.workspace }}/artifacts/bin/packages/x86_64/packages
 
       - name: Build OpenWrt 24.10 package
         uses: openwrt/gh-action-sdk@main
