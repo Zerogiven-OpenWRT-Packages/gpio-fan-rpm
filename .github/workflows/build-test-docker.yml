@@ -27,15 +27,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Prepare package structure
-        run: |
-          # Create the feed directory structure expected by the action
-          mkdir -p feed/gpio-fan-rpm
-          # Copy all files to the package directory
-          cp -r . feed/gpio-fan-rpm/
-          # Remove the feed directory from the package to avoid recursion
-          rm -rf feed/gpio-fan-rpm/feed
+        with:
+          path: feed/gpio-fan-rpm
 
       - name: Build OpenWrt 23.05 package
         uses: openwrt/gh-action-sdk@main
@@ -44,12 +37,10 @@ jobs:
           PACKAGES: gpio-fan-rpm
           V: ${{ github.event.inputs.verbose == 'true' && 's' || '0' }}
           FEED_DIR: ${{ github.workspace }}/feed
+          ARTIFACTS_DIR: ${{ github.workspace }}/artifacts
 
-      - name: Store packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: openwrt-23.05-packages
-          path: bin/packages/x86_64/packages/gpio-fan-rpm_*.ipk
+      - name: Verify packages built
+        run: find artifacts/bin/packages/x86_64/packages/ -maxdepth 1 -name 'gpio-fan-rpm_*.ipk' -type f | grep .
 
   build-test-24-10:
     name: Build Test - OpenWrt 24.10
@@ -59,15 +50,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Prepare package structure
-        run: |
-          # Create the feed directory structure expected by the action
-          mkdir -p feed/gpio-fan-rpm
-          # Copy all files to the package directory
-          cp -r . feed/gpio-fan-rpm/
-          # Remove the feed directory from the package to avoid recursion
-          rm -rf feed/gpio-fan-rpm/feed
+        with:
+          path: feed/gpio-fan-rpm
 
       - name: Build OpenWrt 24.10 package
         uses: openwrt/gh-action-sdk@main
@@ -76,9 +60,7 @@ jobs:
           PACKAGES: gpio-fan-rpm
           V: ${{ github.event.inputs.verbose == 'true' && 's' || '0' }}
           FEED_DIR: ${{ github.workspace }}/feed
+          ARTIFACTS_DIR: ${{ github.workspace }}/artifacts
 
-      - name: Store packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: openwrt-24.10-packages
-          path: bin/packages/x86_64/packages/gpio-fan-rpm_*.ipk 
+      - name: Verify packages built
+        run: find artifacts/bin/packages/x86_64/packages/ -maxdepth 1 -name 'gpio-fan-rpm_*.ipk' -type f | grep . 
