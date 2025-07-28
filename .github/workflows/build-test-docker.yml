@@ -86,6 +86,9 @@ jobs:
             -w /workspace \
             openwrt/sdk:x86_64-v24.10.0 \
             bash -c "
+              # Run setup.sh to download SDK binaries (required for 24.10+)
+              ./setup.sh
+              
               # Update feeds
               ./scripts/feeds update -a
               
