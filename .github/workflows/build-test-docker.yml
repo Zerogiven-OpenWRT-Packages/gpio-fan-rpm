@@ -118,9 +118,11 @@ jobs:
               cp -r /workspace/* package/gpio-fan-rpm/
 
               if [ '${{ github.event.inputs.verbose }}' = 'true' ]; then
-                make package/gpio-fan-rpm/compile V=s -j$(nproc)
+                # make package/gpio-fan-rpm/compile V=s -j$(nproc)
+                make package/gpio-fan-rpm/compile V=s -j1
               else
-                make package/gpio-fan-rpm/compile -j$(nproc)
+                # make package/gpio-fan-rpm/compile -j$(nproc)
+                make package/gpio-fan-rpm/compile -j1
               fi
               
               # Check if build was successful
