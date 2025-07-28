@@ -97,19 +97,18 @@ jobs:
             -v $GITHUB_WORKSPACE/bin/:/builder/bin \
             openwrt/sdk:x86_64-v24.10.0 \
             bash -c "
-              # Copy the repo into package/gpio-fan-rpm/
               mkdir -p package/gpio-fan-rpm
               cp -r /workspace/* package/gpio-fan-rpm/
 
               # Run setup script to download SDK binaries (required for 24.10+)
               /builder/setup.sh
-              
-              # Update feeds
+
               ./scripts/feeds update -a
-              
-              # Install only the packages we need
               ./scripts/feeds install -a
               
+              make package/gpio-fan-rpm/download
+              make package/gpio-fan-rpm/prepare
+
               if [ '${{ github.event.inputs.verbose }}' = 'true' ]; then
                 make package/gpio-fan-rpm/compile V=s -j$(nproc)
               else
