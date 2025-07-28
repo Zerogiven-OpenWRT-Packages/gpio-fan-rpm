@@ -43,6 +43,7 @@ jobs:
             -v $GITHUB_WORKSPACE:/workspace \
             -v $GITHUB_WORKSPACE/bin:/builder/bin \
             -w /workspace \
+            --user buildbot \
             openwrt/sdk:x86-64-v23.05.0 \
             bash -c "
               # Update feeds (following OpenWrt SDK example)
@@ -52,7 +53,7 @@ jobs:
               ./scripts/feeds install libgpiod
               ./scripts/feeds install libjson-c
               
-              # Copy package source
+              # Copy package source (as buildbot user)
               mkdir -p package/gpio-fan-rpm
               cp -r /workspace/* package/gpio-fan-rpm/
               
@@ -96,6 +97,7 @@ jobs:
             -v $GITHUB_WORKSPACE:/workspace \
             -v $GITHUB_WORKSPACE/bin:/builder/bin \
             -w /workspace \
+            --user buildbot \
             openwrt/sdk:x86_64-v24.10.0 \
             bash -c "
               # Run setup script to download SDK binaries (required for 24.10+)
@@ -108,7 +110,7 @@ jobs:
               ./scripts/feeds install libgpiod
               ./scripts/feeds install libjson-c
               
-              # Copy package source
+              # Copy package source (as buildbot user)
               mkdir -p package/gpio-fan-rpm
               cp -r /workspace/* package/gpio-fan-rpm/
               
