@@ -108,7 +108,7 @@ jobs:
               /builder/setup.sh
               
               # Disable ninja for glib2 to avoid cross-compilation issues
-              export NINJA=no
+              # export NINJA=no
 
               # Update feeds
               ./scripts/feeds update packages

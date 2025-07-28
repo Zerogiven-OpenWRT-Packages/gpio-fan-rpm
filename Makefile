@@ -15,7 +15,7 @@ PKG_LICENSE        := GPL-3.0-only
 PKG_LICENSE_FILES  := LICENSE
 PKG_COPYRIGHT_YEAR := $(shell date +%Y)
 
-PKG_BUILD_DEPENDS:=libgpiod libjson-c glib2/host
+PKG_BUILD_DEPENDS:=libgpiod libjson-c meson/host glib2/host
 
 HOST_BUILD_DEPENDS:=ninja/host
 
