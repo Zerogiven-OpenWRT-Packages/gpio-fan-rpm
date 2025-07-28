@@ -28,12 +28,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Prepare package structure
+        run: |
+          # Create the feed directory structure expected by the action
+          mkdir -p feed/gpio-fan-rpm
+          # Copy all files to the package directory
+          cp -r . feed/gpio-fan-rpm/
+          # Remove the feed directory from the package to avoid recursion
+          rm -rf feed/gpio-fan-rpm/feed
+
       - name: Build OpenWrt 23.05 package
         uses: openwrt/gh-action-sdk@main
         env:
           ARCH: x86_64-23.05.0
           PACKAGES: gpio-fan-rpm
           V: ${{ github.event.inputs.verbose == 'true' && 's' || '0' }}
+          FEED_DIR: ${{ github.workspace }}/feed
 
       - name: Store packages
         uses: actions/upload-artifact@v4
@@ -50,12 +60,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Prepare package structure
+        run: |
+          # Create the feed directory structure expected by the action
+          mkdir -p feed/gpio-fan-rpm
+          # Copy all files to the package directory
+          cp -r . feed/gpio-fan-rpm/
+          # Remove the feed directory from the package to avoid recursion
+          rm -rf feed/gpio-fan-rpm/feed
+
       - name: Build OpenWrt 24.10 package
         uses: openwrt/gh-action-sdk@main
         env:
           ARCH: x86_64-24.10.0
           PACKAGES: gpio-fan-rpm
           V: ${{ github.event.inputs.verbose == 'true' && 's' || '0' }}
+          FEED_DIR: ${{ github.workspace }}/feed
 
       - name: Store packages
         uses: actions/upload-artifact@v4
