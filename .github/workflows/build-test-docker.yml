@@ -120,6 +120,7 @@ jobs:
               ./scripts/feeds install libjson-c
               ./scripts/feeds install libubox
               ./scripts/feeds install libuci
+              ./scripts/feeds install gpio-fan-rpm
               
               # Create initial configuration (prevents menuconfig from running)
               make defconfig
