@@ -104,9 +104,6 @@ jobs:
             -v $GITHUB_WORKSPACE/bin/:/builder/bin \
             openwrt/sdk:x86_64-v24.10.0 \
             bash -c "
-              # Install missing dependency for glib2 build
-              apt update && apt install -y libunwind-dev
-              
               # Switch to buildbot user for the rest of the build
               su buildbot
 

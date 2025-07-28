@@ -133,9 +133,14 @@ jobs:
           # Update feeds
           ./scripts/feeds update -a
           
-          # Install only the packages we need (not all packages)
+          # Install required packages and their dependencies
           ./scripts/feeds install libgpiod
           ./scripts/feeds install libjson-c
+          ./scripts/feeds install libubox
+          ./scripts/feeds install libuci
+          
+          # Create initial configuration (prevents menuconfig from running)
+          make defconfig
           
           echo "SDK environment setup complete"
 
@@ -156,6 +161,13 @@ jobs:
       - name: Build package
         run: |
           cd $SDK_DIR
+          
+          # Fix glib2 build issues for OpenWRT 24.10
+          if [ "${{ matrix.openwrt_version }}" = "24.10" ]; then
+            echo "Applying glib2 build fixes for OpenWRT 24.10..."
+            # Disable sysprof in glib2 to avoid libunwind dependency issues
+            sed -i 's/-Dsysprof=enabled/-Dsysprof=disabled/g' feeds/packages/libs/glib2/Makefile
+          fi
           
           echo "Building gpio-fan-rpm package for OpenWRT ${{ matrix.openwrt_version }} (${{ matrix.libgpiod_version }})..."
           
