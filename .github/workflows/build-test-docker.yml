@@ -38,26 +38,30 @@ jobs:
         run: |
           echo "Building for OpenWRT 23.05 using Docker..."
           
-          # Use official OpenWrt Docker container (following official example)
+          # Use official OpenWrt Docker container
           docker run --rm \
+            -v $GITHUB_WORKSPACE:/workspace \
             -v $GITHUB_WORKSPACE/bin/:/builder/bin \
             openwrt/sdk:x86-64-v23.05.0 \
             bash -c "
-              # Update feeds (following OpenWrt SDK example)
+              # Update feeds
               ./scripts/feeds update packages
               
-              # Make defconfig (following OpenWrt SDK example)
+              # Make defconfig
               make defconfig
               
               # Install only the packages we need
               ./scripts/feeds install libgpiod
               ./scripts/feeds install libjson-c
               
-              # Copy package source
+              # Copy the repo into package/gpio-fan-rpm/
               mkdir -p package/gpio-fan-rpm
-              cp -r /builder/bin/* package/gpio-fan-rpm/
+              cp -r /workspace/* package/gpio-fan-rpm/
               
-              # Build package (following OpenWrt SDK example)
+              # Build package following proper steps
+              make package/gpio-fan-rpm/download
+              make package/gpio-fan-rpm/prepare
+              
               if [ '${{ github.event.inputs.verbose }}' = 'true' ]; then
                 make package/gpio-fan-rpm/compile V=s -j$(nproc)
               else
@@ -85,36 +89,41 @@ jobs:
 
       - name: Prepare build directory
         run: |
-          # Create bin directory for output (following OpenWrt Docker example)
+          # Create bin directory with proper permissions for output
           mkdir -p bin
+          chmod 777 bin
 
       - name: Build OpenWRT 24.10 package
         run: |
           echo "Building for OpenWRT 24.10 using Docker..."
           
-          # Use official OpenWrt Docker container (following official example)
+          # Use official OpenWrt Docker container
           docker run --rm \
+            -v $GITHUB_WORKSPACE:/workspace \
             -v $GITHUB_WORKSPACE/bin/:/builder/bin \
             openwrt/sdk:x86_64-v24.10.0 \
             bash -c "
               # Run setup script to download SDK binaries (required for 24.10+)
               /builder/setup.sh
               
-              # Update feeds (following OpenWrt SDK example)
+              # Update feeds
               ./scripts/feeds update packages
               
-              # Make defconfig (following OpenWrt SDK example)
+              # Make defconfig
               make defconfig
               
               # Install only the packages we need
               ./scripts/feeds install libgpiod
               ./scripts/feeds install libjson-c
               
-              # Copy package source
+              # Copy the repo into package/gpio-fan-rpm/
               mkdir -p package/gpio-fan-rpm
-              cp -r /builder/bin/* package/gpio-fan-rpm/
+              cp -r /workspace/* package/gpio-fan-rpm/
               
-              # Build package (following OpenWrt SDK example)
+              # Build package following proper steps
+              make package/gpio-fan-rpm/download
+              make package/gpio-fan-rpm/prepare
+              
               if [ '${{ github.event.inputs.verbose }}' = 'true' ]; then
                 make package/gpio-fan-rpm/compile V=s -j$(nproc)
               else
