@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+## [1.0.0] - 2025-07-30
+
+### Added
+- Version 1.0.0 release
+
+### Changed
+- Updated version to 1.0.0
+
+### Fixed
+- None
+
+### Removed
+- None
+
+
 ## [1.0.0] - 2025-07-29
 
 ### Added
