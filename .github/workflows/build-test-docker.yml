@@ -28,7 +28,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          path: feed/gpio-fan-rpm
+          path: ${{ github.workspace }}/feed/gpio-fan-rpm
 
       - name: Create artifacts directory structure
         run: |
@@ -55,7 +55,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          path: feed/gpio-fan-rpm
+          path: ${{ github.workspace }}/feed/gpio-fan-rpm
 
       - name: Create artifacts directory structure
         run: |

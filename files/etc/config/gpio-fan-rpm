@@ -1,0 +1,3 @@
+config gpio-fan-rpm 'defaults'
+	option duration '2'
+	option pulses '4'
