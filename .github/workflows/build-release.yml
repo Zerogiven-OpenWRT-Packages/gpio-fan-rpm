@@ -83,6 +83,7 @@ jobs:
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
+          name: gpio-fan-rpm-${{ matrix.openwrt_version }}-${{ steps.get_version.outputs.version }}.ipk
           path: ${{ github.workspace }}/release-assets/gpio-fan-rpm-${{ matrix.openwrt_version }}-${{ steps.get_version.outputs.version }}.ipk
           retention-days: 30
 

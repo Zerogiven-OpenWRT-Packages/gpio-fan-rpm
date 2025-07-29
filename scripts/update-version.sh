@@ -219,6 +219,7 @@ show_summary() {
     echo "  1. Review the changes"
     echo "  2. Test the build with the new version"
     echo "  3. Create a GitHub release if needed"
+    echo
 }
 
 # Main script
