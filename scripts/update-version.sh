@@ -130,15 +130,17 @@ update_changelog() {
         echo "Would add to CHANGELOG.md:"
         echo "$changelog_entry"
     else
-        # Insert the new version entry after the first ## [version] line
-        # This puts it right after the latest release
-        awk -v entry="$changelog_entry" '
-        /^## \[[0-9]/ && !found {
-            print entry
-            found = 1
-        }
-        { print }
-        ' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
+        # Create a temporary file with the new content
+        {
+            # Add the header (first 4 lines)
+            head -4 CHANGELOG.md
+            
+            # Add the new version entry
+            echo "$changelog_entry"
+            
+            # Add the rest of the content (skip the first 4 lines)
+            tail -n +5 CHANGELOG.md
+        } > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
         
         print_success "Updated CHANGELOG.md with version $new_version"
     fi
