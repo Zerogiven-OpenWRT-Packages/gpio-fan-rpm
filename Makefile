@@ -84,6 +84,8 @@ define Package/$(PKG_NAME)/install
 	@ls -la ./files/ 2>/dev/null || echo "files directory not found"
 	@echo "Debug: Checking if config file exists:"
 	@ls -la ./files/etc/config/gpio-fan-rpm 2>/dev/null || echo "config file not found"
+  @echo "Debug: Checking if src directory exists:"
+	@ls -la ./src/ 2>/dev/null || echo "src directory not found"
 	$(INSTALL_CONF) ./files/etc/config/gpio-fan-rpm $(1)/etc/config/gpio-fan-rpm
 endef
 
