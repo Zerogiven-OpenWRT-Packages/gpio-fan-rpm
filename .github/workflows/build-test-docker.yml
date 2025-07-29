@@ -33,7 +33,6 @@ jobs:
       - name: Create artifacts directory structure
         run: |
           mkdir -p ${{ github.workspace }}/artifacts
-          mkdir -p ${{ github.workspace }}/artifacts/bin/packages/x86_64/packages
 
       - name: Build OpenWrt 23.05 package
         uses: openwrt/gh-action-sdk@main
@@ -61,7 +60,6 @@ jobs:
       - name: Create artifacts directory structure
         run: |
           mkdir -p ${{ github.workspace }}/artifacts
-          mkdir -p ${{ github.workspace }}/artifacts/bin/packages/x86_64/packages
 
       - name: Build OpenWrt 24.10 package
         uses: openwrt/gh-action-sdk@main

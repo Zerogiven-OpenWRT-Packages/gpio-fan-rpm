@@ -17,8 +17,6 @@ PKG_COPYRIGHT_YEAR := $(shell date +%Y)
 
 PKG_BUILD_DEPENDS:=libgpiod libjson-c
 
-CWD=$(shell pwd)
-
 # Detect libgpiod version by checking header files
 # This is the most reliable method for OpenWRT builds
 LIBGPIOD_V2_HEADER := $(shell test -f $(STAGING_DIR)/usr/include/gpiod.h && grep -q "gpiod_request_config" $(STAGING_DIR)/usr/include/gpiod.h && echo "yes" || echo "no")
@@ -81,7 +79,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/gpio-fan-rpm $(1)/usr/sbin/gpio-fan-rpm
 	
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) $(CWD)/files/etc/config/gpio-fan-rpm $(1)/etc/config/gpio-fan-rpm
+	$(INSTALL_CONF) $(CURDIR)/files/etc/config/gpio-fan-rpm $(1)/etc/config/gpio-fan-rpm
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME))) 
