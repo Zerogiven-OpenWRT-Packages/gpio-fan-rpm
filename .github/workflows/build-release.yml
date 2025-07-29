@@ -103,15 +103,16 @@ jobs:
         run: |
           # Make the script executable and run it
           chmod +x scripts/generate-release-notes.sh
-          RELEASE_BODY=$(./scripts/generate-release-notes.sh)
           
-          # Escape newlines for GitHub Actions
-          RELEASE_BODY="${RELEASE_BODY//'%'/'%25'}"
-          RELEASE_BODY="${RELEASE_BODY//$'\n'/'%0A'}"
-          RELEASE_BODY="${RELEASE_BODY//$'\r'/'%0D'}"
+          # Generate release notes to a file
+          ./scripts/generate-release-notes.sh > release-notes.md
           
+          # Read the file content for GitHub Actions output
+          RELEASE_BODY=$(cat release-notes.md)
+          
+          # Use GitHub Actions multiline output syntax
           echo "release_body<<EOF" >> $GITHUB_OUTPUT
-          echo "$RELEASE_BODY" >> $GITHUB_OUTPUT
+          cat release-notes.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Download all package artifacts

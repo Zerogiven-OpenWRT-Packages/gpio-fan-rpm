@@ -133,13 +133,13 @@ update_changelog() {
         # Create a temporary file with the new content
         {
             # Add the header (first 4 lines)
-            head -4 CHANGELOG.md
+            head -8 CHANGELOG.md
             
             # Add the new version entry
             echo "$changelog_entry"
             
             # Add the rest of the content (skip the first 4 lines)
-            tail -n +5 CHANGELOG.md
+            tail -n +9 CHANGELOG.md
         } > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
         
         print_success "Updated CHANGELOG.md with version $new_version"
