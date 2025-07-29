@@ -119,13 +119,6 @@ jobs:
         with:
           path: release-assets/
 
-      # - name: Create dynamic release documentation
-      #   run: |
-          
-      #     # List all assets
-      #     echo "Release assets prepared:"
-      #     find release-assets -name "*.ipk" -type f
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
