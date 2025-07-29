@@ -119,7 +119,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ${{ github.workspace }}/release-assets/
-          pattern: *.ipk
+          pattern: gpio-fan-rpm-*.ipk
           merge-multiple: true
 
       - name: Create GitHub Release
