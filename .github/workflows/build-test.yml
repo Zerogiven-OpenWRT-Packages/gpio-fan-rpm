@@ -1,48 +1,34 @@
-name: Build Test
+name: Build OpenWRT package (test)
 
-# Manual workflow trigger only - for development testing
 on:
   workflow_dispatch:
     inputs:
       openwrt_version:
-        description: 'OpenWRT version to test'
+        description: 'OpenWrt version to test'
         required: true
         default: 'both'
         type: choice
         options:
-          - '23.05'
-          - '24.10'
-          - 'both'
+        - '23.05'
+        - '24.10'
+        - 'both'
       verbose:
         description: 'Verbose build output'
         required: false
         default: false
         type: boolean
 
-# Environment variables
-env:
-  OPENWRT_23_05_VERSION: "23.05.0"
-  OPENWRT_24_10_VERSION: "24.10.0"
-  SDK_BASE_URL: "https://downloads.openwrt.org/releases"
-  TARGET_ARCH: "x86_64"
-  TARGET: "x86"
-  SUBTARGET: "64"
-  SDK_NAME: "x86-64"
-
 jobs:
   build-test:
-    name: Build Test - OpenWRT ${{ matrix.openwrt_version }}
+    name: Build Test - OpenWrt ${{ matrix.openwrt_version }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
-          - openwrt_version: "23.05"
-            openwrt_full_version: "23.05.0"
-            libgpiod_version: "v1"
-          - openwrt_version: "24.10"
-            openwrt_full_version: "24.10.0"
-            libgpiod_version: "v2"
-      # Only run the selected versions
+          - openwrt_version: '23.05'
+            arch: 'x86_64-23.05.0'
+          - openwrt_version: '24.10'
+            arch: 'x86_64-24.10.0'
       fail-fast: false
     
     steps:
@@ -50,187 +36,29 @@ jobs:
         run: |
           # Check if this matrix combination should be built
           if [ "${{ github.event.inputs.openwrt_version }}" != "both" ] && [ "${{ github.event.inputs.openwrt_version }}" != "${{ matrix.openwrt_version }}" ]; then
-            echo "Skipping build: OpenWRT version mismatch (requested: ${{ github.event.inputs.openwrt_version }}, matrix: ${{ matrix.openwrt_version }})"
+            echo "Skipping build: OpenWrt version mismatch (requested: ${{ github.event.inputs.openwrt_version }}, matrix: ${{ matrix.openwrt_version }})"
             exit 0
           fi
           
-          echo "Proceeding with build for OpenWRT ${{ matrix.openwrt_version }} (${{ matrix.libgpiod_version }})"
+          echo "Proceeding with build for OpenWrt ${{ matrix.openwrt_version }}"
 
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup build environment
-        run: |
-          # Install required packages for Ubuntu
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            clang \
-            flex \
-            bison \
-            g++ \
-            gawk \
-            gcc-multilib \
-            g++-multilib \
-            gettext \
-            git \
-            libncurses5-dev \
-            libssl-dev \
-            python3-setuptools \
-            rsync \
-            swig \
-            unzip \
-            zlib1g-dev \
-            file \
-            wget \
-            time \
-            zstd
-
-      - name: Download OpenWRT SDK
-        run: |
-          echo "Downloading OpenWRT ${{ matrix.openwrt_full_version }} SDK for $TARGET_ARCH..."
-          
-          # Set SDK URL based on version
-          if [ "${{ matrix.openwrt_version }}" = "23.05" ]; then
-            SDK_URL="https://downloads.openwrt.org/releases/23.05.0/targets/x86/64/openwrt-sdk-23.05.0-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
-            SDK_FILE="openwrt-sdk.tar.xz"
-          else
-            SDK_URL="https://mirror-03.infra.openwrt.org/releases/24.10.0/targets/x86/64/openwrt-sdk-24.10.0-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
-            SDK_FILE="openwrt-sdk.tar.zst"
-          fi
-          
-          echo "SDK URL: $SDK_URL"
-          
-          # Download SDK
-          wget -q "$SDK_URL" -O "$SDK_FILE"
-          
-          if [ ! -f "$SDK_FILE" ]; then
-            echo "Failed to download SDK from $SDK_URL"
-            exit 1
-          fi
-          
-          # Extract SDK (handle both .tar.xz and .tar.zst)
-          if [[ "$SDK_FILE" == *.zst ]]; then
-            tar -xf "$SDK_FILE" --use-compress-program=zstd
-          else
-            tar -xf "$SDK_FILE"
-          fi
-          
-          # Find SDK directory
-          SDK_DIR=$(find . -maxdepth 1 -name "openwrt-sdk-*" -type d | head -1)
-          if [ -z "$SDK_DIR" ]; then
-            echo "Failed to find SDK directory"
-            exit 1
-          fi
-          
-          echo "SDK_DIR=$SDK_DIR" >> $GITHUB_ENV
-          echo "Found SDK directory: $SDK_DIR"
-
-      - name: Setup SDK environment
-        run: |
-          cd $SDK_DIR
-          
-          # Update feeds
-          ./scripts/feeds update -a
-          
-          # Install required packages and their dependencies
-          ./scripts/feeds install libgpiod
-          ./scripts/feeds install libjson-c
-          ./scripts/feeds install libubox
-          ./scripts/feeds install libuci
-          
-          # Create initial configuration (prevents menuconfig from running)
-          make defconfig
-          
-          echo "SDK environment setup complete"
-
-      - name: Copy package source
-        run: |
-          cd $SDK_DIR
-          
-          # Create package directory
-          mkdir -p package/gpio-fan-rpm
-          
-          # Copy package files
-          cp -r $GITHUB_WORKSPACE/* package/gpio-fan-rpm/
-          
-          # Show package structure
-          echo "Package structure:"
-          find package/gpio-fan-rpm -type f -name "*.c" -o -name "*.h" -o -name "Makefile" -o -name "Kconfig" | sort
-
-      - name: Build package
-        run: |
-          cd $SDK_DIR
-          
-          # Fix glib2 build issues for OpenWRT 24.10
-          if [ "${{ matrix.openwrt_version }}" = "24.10" ]; then
-            echo "Applying glib2 build fixes for OpenWRT 24.10..."
-            # Disable sysprof in glib2 to avoid libunwind dependency issues
-            sed -i 's/-Dsysprof=enabled/-Dsysprof=disabled/g' feeds/packages/libs/glib2/Makefile
-          fi
-          
-          echo "Building gpio-fan-rpm package for OpenWRT ${{ matrix.openwrt_version }} (${{ matrix.libgpiod_version }})..."
-          
-          # Build the package (verbose only if requested)
-          if [ "${{ github.event.inputs.verbose }}" = "true" ]; then
-            echo "Building with verbose output..."
-            make package/gpio-fan-rpm/compile V=s
-          else
-            echo "Building with standard output..."
-            make package/gpio-fan-rpm/compile
-          fi
-          
-          # Check if build was successful
-          if [ $? -eq 0 ]; then
-            echo "✅ Build successful!"
-            
-            # List generated packages
-            echo "Generated packages:"
-            find bin/packages -name "*gpio-fan-rpm*" -type f
-            
-            # Show package info
-            if [ -f bin/packages/*/base/gpio-fan-rpm_*.ipk ]; then
-              echo "Package details:"
-              tar -tzf bin/packages/*/base/gpio-fan-rpm_*.ipk | head -10
-              
-              echo "Package size:"
-              du -h bin/packages/*/base/gpio-fan-rpm_*.ipk
-            fi
-          else
-            echo "❌ Build failed!"
-            exit 1
-          fi
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        if: success()
         with:
-          name: build-test-${{ matrix.openwrt_version }}-${{ github.run_id }}
-          path: |
-            ${{ env.SDK_DIR }}/bin/packages/*/base/gpio-fan-rpm_*.ipk
-            ${{ env.SDK_DIR }}/bin/packages/*/base/Packages*
-          retention-days: 7
+          path: ${{ github.workspace }}/feed/gpio-fan-rpm
 
-      - name: Build summary
-        if: always()
+      - name: Create artifacts directory structure
         run: |
-          echo "## Build Test Summary for OpenWRT ${{ matrix.openwrt_version }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ -f $SDK_DIR/bin/packages/*/base/gpio-fan-rpm_*.ipk ]; then
-            echo "✅ **Build Status**: SUCCESS" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Generated Package**: " >> $GITHUB_STEP_SUMMARY
-            ls -la $SDK_DIR/bin/packages/*/base/gpio-fan-rpm_*.ipk >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Package Size**: " >> $GITHUB_STEP_SUMMARY
-            du -h $SDK_DIR/bin/packages/*/base/gpio-fan-rpm_*.ipk >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Architecture**: $TARGET_ARCH" >> $GITHUB_STEP_SUMMARY
-            echo "**OpenWRT Version**: ${{ matrix.openwrt_version }} (${{ matrix.libgpiod_version }})" >> $GITHUB_STEP_SUMMARY
-            echo "**Verbose Mode**: ${{ github.event.inputs.verbose }}" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ **Build Status**: FAILED" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "No package was generated." >> $GITHUB_STEP_SUMMARY
-          fi 
+          mkdir -p ${{ github.workspace }}/artifacts
+
+      - name: Build OpenWrt ${{ matrix.openwrt_version }} package
+        uses: openwrt/gh-action-sdk@main
+        env:
+          ARCH: ${{ matrix.arch }}
+          PACKAGES: gpio-fan-rpm
+          V: ${{ github.event.inputs.verbose == 'true' && 's' || '0' }}
+          FEED_DIR: ${{ github.workspace }}/feed
+          ARTIFACTS_DIR: ${{ github.workspace }}/artifacts
+
+      - name: Verify package built
+        run: find ${{ github.workspace }}/artifacts/bin/ -name 'gpio-fan-rpm*.ipk' -type f | grep . 
