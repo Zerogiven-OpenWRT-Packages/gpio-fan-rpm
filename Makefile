@@ -81,7 +81,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/gpio-fan-rpm $(1)/usr/sbin/gpio-fan-rpm
 	
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) $(CWD/files/etc/config/gpio-fan-rpm $(1)/etc/config/gpio-fan-rpm
+	$(INSTALL_CONF) $(CWD)/files/etc/config/gpio-fan-rpm $(1)/etc/config/gpio-fan-rpm
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME))) 
