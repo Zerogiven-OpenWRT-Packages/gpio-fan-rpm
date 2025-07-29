@@ -1,4 +1,4 @@
-name: Release OpenWRT package
+name: Build OpenWRT package (release)
 
 # Trigger on version tags only
 on:
