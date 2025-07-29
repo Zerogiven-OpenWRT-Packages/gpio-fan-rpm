@@ -37,38 +37,6 @@ fi
 cat << EOF
 ## gpio-fan-rpm $CURRENT_VERSION
 
-High-precision command-line utility for measuring fan RPM using GPIO edge detection on OpenWRT devices.
-
-### Compatibility
-- **OpenWRT 23.05**: libgpiod v1 support
-- **OpenWRT 24.10**: libgpiod v2 support
-
-### Installation
-Download the appropriate package for your OpenWRT version and install with:
-\`\`\`bash
-opkg install <package-name>.ipk
-\`\`\`
-
-### Usage
-\`\`\`bash
-# Basic usage
-gpio-fan-rpm --gpio=17
-
-# Continuous monitoring
-gpio-fan-rpm --gpio=17 --watch
-
-# JSON output
-gpio-fan-rpm --gpio=17 --json
-\`\`\`
-
-### Features
-- High-precision RPM measurement using GPIO edge detection
-- Support for both libgpiod v1 and v2 APIs
-- Multiple output formats (human-readable, JSON, numeric, collectd)
-- Continuous monitoring mode
-- Multithreaded support for multiple GPIO pins
-- Auto-detection of GPIO chips
-
 $CHANGES_SECTION
 $COMMIT_LOG
 

@@ -83,7 +83,6 @@ jobs:
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: package-${{ matrix.openwrt_version }}-${{ steps.get_version.outputs.version }}
           path: ${{ github.workspace }}/release-assets/gpio-fan-rpm-${{ matrix.openwrt_version }}-${{ steps.get_version.outputs.version }}.ipk
           retention-days: 30
 
@@ -117,7 +116,7 @@ jobs:
       - name: Download all package artifacts
         uses: actions/download-artifact@v4
         with:
-          path: release-assets/
+          path: ${{ github.workspace }}/release-assets/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -125,8 +124,7 @@ jobs:
           tag_name: ${{ needs.build-packages.outputs.tag_name }}
           name: "Release ${{ needs.build-packages.outputs.version }}"
           body: ${{ steps.release_notes.outputs.release_body }}
-          files: |
-            release-assets/*.ipk
+          files: ${{ github.workspace }}/release-assets/*.ipk
           draft: false
           prerelease: false
         env:
@@ -142,6 +140,8 @@ jobs:
           echo "**Packages Built**: " >> $GITHUB_STEP_SUMMARY
           echo "- OpenWRT 23.05 (libgpiod v1)" >> $GITHUB_STEP_SUMMARY
           echo "- OpenWRT 24.10 (libgpiod v2)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          ls ${{ github.workspace }}/release-assets/ >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Architecture**: x86_64" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
