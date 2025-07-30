@@ -51,7 +51,7 @@ A high-precision command-line utility for measuring fan RPM using GPIO edge dete
 
 ```bash
 opkg update
-opkg install gpio-fan-rpm
+opkg install gpio-fan-rpm*.ipk
 ```
 
 ### Custom OpenWRT Build

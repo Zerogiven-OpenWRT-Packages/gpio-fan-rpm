@@ -5,7 +5,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 All notable changes to this project will be documented in this file.
 
-### Planned
 ## [1.0.0] - 2025-07-30
 
 ### Added
@@ -20,6 +19,6 @@ All notable changes to this project will be documented in this file.
 ### Removed
 - None
 
-
+### Planned
 - Unit tests
 - Additional hardware compatibility 
