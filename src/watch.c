@@ -27,34 +27,50 @@
 // External variable for signal handling
 extern volatile sig_atomic_t stop;
 
+// Cleanup data structure for terminal restoration
+typedef struct {
+    struct termios old_termios;
+    int old_flags;
+} terminal_cleanup_t;
+
+// Cleanup handler to restore terminal settings
+static void restore_terminal_cleanup(void *arg) {
+    terminal_cleanup_t *cleanup = (terminal_cleanup_t *)arg;
+    tcsetattr(STDIN_FILENO, TCSANOW, &cleanup->old_termios);
+    fcntl(STDIN_FILENO, F_SETFL, cleanup->old_flags);
+}
+
 // Function to monitor keyboard input for 'q' key
 static void* keyboard_monitor_thread(void *arg) {
     (void)arg;
-    
+
     // Set terminal to non-blocking mode
-    struct termios old_termios, new_termios;
-    int old_flags;
-    
+    terminal_cleanup_t cleanup_data;
+    struct termios new_termios;
+
     // Get current terminal settings
-    if (tcgetattr(STDIN_FILENO, &old_termios) != 0) {
+    if (tcgetattr(STDIN_FILENO, &cleanup_data.old_termios) != 0) {
         return NULL; // Can't modify terminal, just return
     }
-    
+
     // Save old flags
-    old_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    
+    cleanup_data.old_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+
     // Set non-blocking mode
-    new_termios = old_termios;
+    new_termios = cleanup_data.old_termios;
     new_termios.c_lflag &= ~(ICANON | ECHO);
     new_termios.c_cc[VMIN] = 0;
     new_termios.c_cc[VTIME] = 0;
-    
+
     if (tcsetattr(STDIN_FILENO, TCSANOW, &new_termios) != 0) {
         return NULL; // Can't modify terminal, just return
     }
-    
-    fcntl(STDIN_FILENO, F_SETFL, old_flags | O_NONBLOCK);
-    
+
+    fcntl(STDIN_FILENO, F_SETFL, cleanup_data.old_flags | O_NONBLOCK);
+
+    // Register cleanup handler - will be called on thread cancellation or exit
+    pthread_cleanup_push(restore_terminal_cleanup, &cleanup_data);
+
     // Monitor for 'q' key
     while (!stop) {
         char ch;
@@ -66,11 +82,10 @@ static void* keyboard_monitor_thread(void *arg) {
         }
         usleep(100000); // Sleep 100ms between checks
     }
-    
-    // Restore terminal settings
-    tcsetattr(STDIN_FILENO, TCSANOW, &old_termios);
-    fcntl(STDIN_FILENO, F_SETFL, old_flags);
-    
+
+    // Pop and execute cleanup handler
+    pthread_cleanup_pop(1);
+
     return NULL;
 }
 
@@ -110,6 +125,8 @@ int run_watch_mode(int *gpios, size_t ngpio, char *chipname,
             chip_close(test_chip);
         } else {
             fprintf(stderr, "Error: cannot auto-detect GPIO chip\n");
+            pthread_mutex_destroy(&results_mutex);
+            pthread_cond_destroy(&all_finished);
             free(threads);
             free(results);
             free(finished);
