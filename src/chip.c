@@ -52,9 +52,13 @@ struct gpiod_chip* chip_auto_detect(int gpio, char **chipname_out) {
         if (info) {
             size_t num_lines = gpiod_chip_info_get_num_lines(info);
             gpiod_chip_info_free(info);
-            
+
             if (gpio < (int)num_lines) {
                 *chipname_out = strdup(name);
+                if (!*chipname_out) {
+                    chip_close(chip);
+                    return NULL;
+                }
                 return chip;
             }
         }
@@ -64,6 +68,10 @@ struct gpiod_chip* chip_auto_detect(int gpio, char **chipname_out) {
         if (line) {
             gpiod_line_release(line);
             *chipname_out = strdup(name);
+            if (!*chipname_out) {
+                chip_close(chip);
+                return NULL;
+            }
             return chip;
         }
 #endif
@@ -106,46 +114,50 @@ size_t chip_get_num_lines(struct gpiod_chip *chip) {
 
 /**
  * @brief Get chip name from chip info
- * 
+ *
  * @param chip Chip object
- * @return const char* Chip name or NULL on error
+ * @return char* Allocated string with chip name or NULL on error. Caller must free().
  */
-const char* chip_get_name(struct gpiod_chip *chip) {
+char* chip_get_name(struct gpiod_chip *chip) {
     if (!chip) return NULL;
-    
+
 #ifdef LIBGPIOD_V2
     struct gpiod_chip_info *info = chip_get_info(chip);
     if (!info) return NULL;
-    
+
     const char *name = gpiod_chip_info_get_name(info);
+    char *result = name ? strdup(name) : NULL;
     gpiod_chip_info_free(info);
-    
-    return name;
+
+    return result;
 #else
-    // In libgpiod v1, get name directly from chip
-    return gpiod_chip_name(chip);
+    // In libgpiod v1, get name directly from chip and duplicate it
+    const char *name = gpiod_chip_name(chip);
+    return name ? strdup(name) : NULL;
 #endif
 }
 
 /**
  * @brief Get chip label from chip info
- * 
+ *
  * @param chip Chip object
- * @return const char* Chip label or NULL on error
+ * @return char* Allocated string with chip label or NULL on error. Caller must free().
  */
-const char* chip_get_label(struct gpiod_chip *chip) {
+char* chip_get_label(struct gpiod_chip *chip) {
     if (!chip) return NULL;
-    
+
 #ifdef LIBGPIOD_V2
     struct gpiod_chip_info *info = chip_get_info(chip);
     if (!info) return NULL;
-    
+
     const char *label = gpiod_chip_info_get_label(info);
+    char *result = label ? strdup(label) : NULL;
     gpiod_chip_info_free(info);
-    
-    return label;
+
+    return result;
 #else
-    // In libgpiod v1, get label directly from chip
-    return gpiod_chip_label(chip);
+    // In libgpiod v1, get label directly from chip and duplicate it
+    const char *label = gpiod_chip_label(chip);
+    return label ? strdup(label) : NULL;
 #endif
 } 
