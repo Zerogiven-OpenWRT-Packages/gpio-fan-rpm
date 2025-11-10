@@ -69,7 +69,7 @@ TARGET_LDFLAGS += -pthread -lrt -luci -lubox
 define Build/Compile
 	$(MAKE) -C $(PKG_BUILD_DIR) \
 		CC="$(TARGET_CC)" \
-		CFLAGS="$(TARGET_CFLAGS) -I$(STAGING_DIR)/usr/include" \
+		CFLAGS="$(TARGET_CFLAGS) -I$(PKG_BUILD_DIR)/include -I$(STAGING_DIR)/usr/include" \
 		LDFLAGS="$(TARGET_LDFLAGS) -L$(STAGING_DIR)/usr/lib" \
 		LIB="-lgpiod -ljson-c -lpthread -lrt -luci -lubox"
 endef
