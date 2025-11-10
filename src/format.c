@@ -91,10 +91,11 @@ char* format_json(int gpio, double rpm) {
  */
 char* format_collectd(int gpio, double rpm, int duration) {
     char host[HOSTNAME_BUFFER_SIZE] = {0};
-    
+
     // Get hostname, use "unknown" as fallback
     if (gethostname(host, sizeof(host) - 1) < 0) {
-        strcpy(host, "unknown");
+        strncpy(host, "unknown", sizeof(host) - 1);
+        host[sizeof(host) - 1] = '\0'; // Ensure null termination
     }
     
     time_t now = time(NULL);
