@@ -53,15 +53,19 @@ int run_single_measurement(int *gpios, size_t ngpio, char *chipname,
             chip_close(test_chip);
         } else {
             fprintf(stderr, "Error: cannot auto-detect GPIO chip\n");
+            pthread_mutex_destroy(&results_mutex);
+            pthread_cond_destroy(&all_finished);
             free(results);
             free(finished);
             return -1;
         }
     }
-    
+
     pthread_t *threads = calloc(ngpio, sizeof(*threads));
     if (!threads) {
         fprintf(stderr, "Error: memory allocation failed\n");
+        pthread_mutex_destroy(&results_mutex);
+        pthread_cond_destroy(&all_finished);
         free(results);
         free(finished);
         return -1;
