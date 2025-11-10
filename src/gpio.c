@@ -342,9 +342,12 @@ void* gpio_thread_fn(void *arg) {
             }
             
             if (all_done) {
-                pthread_cond_signal(a->all_finished);
+                int ret = pthread_cond_signal(a->all_finished);
+                if (ret != 0) {
+                    fprintf(stderr, "Warning: pthread_cond_signal failed: %s\n", strerror(ret));
+                }
             }
-            
+
             pthread_mutex_unlock(a->results_mutex);
             
 
