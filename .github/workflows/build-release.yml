@@ -6,6 +6,9 @@ on:
     tags:
       - 'v*'  # Trigger on version tags like v1.0.0, v1.0.1, etc.
 
+permissions:
+  contents: write
+
 jobs:
   build-packages:
     name: Build OpenWrt ${{ matrix.openwrt_version }} Package
@@ -121,11 +124,13 @@ jobs:
           done
 
       - name: Create GitHub Release & upload assets
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.build-packages.outputs.tag_name }}
           files: |
-            ${{ github.workspace }}/release-assets/**/*.ipk
+            ${{ github.workspace }}/release-assets/24.10/*.ipk
+            ${{ github.workspace }}/release-assets/23.05/*.ipk
+          preserve_order: true
           draft: false
           prerelease: false
           fail_on_unmatched_files: true

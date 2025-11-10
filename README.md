@@ -52,11 +52,7 @@ A high-precision command-line utility for measuring fan RPM using GPIO edge dete
 Download the appropriate package for your OpenWRT version:
 
 ```bash
-# For OpenWRT 23.05
-opkg install gpio-fan-rpm-23.05-*.ipk
-
-# For OpenWRT 24.10
-opkg install gpio-fan-rpm-24.10-*.ipk
+opkg install gpio-fan-rpm-*.ipk
 ```
 
 ### Custom OpenWRT Build
