@@ -110,12 +110,12 @@ int gpio_read_event(gpio_context_t *ctx);
 
 /**
  * @brief Measure RPM on a GPIO line
- * 
+ *
  * @param ctx GPIO context
  * @param pulses_per_rev Pulses per revolution
  * @param duration Total measurement duration in seconds
  * @param debug Enable debug output
- * @return double RPM value (0.0 on error)
+ * @return double RPM value, -1.0 if interrupted, 0.0 if no pulses detected
  */
 double gpio_measure_rpm(gpio_context_t *ctx, int pulses_per_rev, int duration, int debug);
 

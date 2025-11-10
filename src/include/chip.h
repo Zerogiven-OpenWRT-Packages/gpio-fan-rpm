@@ -4,9 +4,24 @@
  * @author CSoellinger
  * @date 2025
  * @license GPL-3.0-only
- * 
+ *
  * This module handles GPIO chip operations with compatibility for both
  * libgpiod v1 and v2.
+ *
+ * @section return_values Return Value Conventions
+ *
+ * This project follows consistent return value patterns:
+ *
+ * - **int functions**: Return 0 on success, -1 on error
+ *   - Exception: parse_arguments() returns 1 for help/version
+ *   - Wait functions: 0=timeout, 1=event ready, -1=error
+ *
+ * - **Pointer functions**: Return valid pointer on success, NULL on error
+ *   - Allocated strings must be freed by caller (documented with @note)
+ *
+ * - **size_t functions**: Return count on success, 0 on error
+ *
+ * - **double functions**: Return measured value, -1.0 on interrupt, 0.0 if no data
  */
 
 #ifndef CHIP_H
