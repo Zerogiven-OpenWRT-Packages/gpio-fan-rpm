@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <pthread.h>
 #include <errno.h>
 #include <unistd.h>
@@ -24,7 +25,7 @@
 #include <math.h>
 
 // External variable for signal handling
-extern volatile int stop;
+extern volatile sig_atomic_t stop;
 
 // Function to monitor keyboard input for 'q' key
 static void* keyboard_monitor_thread(void *arg) {

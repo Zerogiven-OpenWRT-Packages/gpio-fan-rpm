@@ -19,7 +19,7 @@
 #include "measure.h"
 
 // Global variables
-volatile int stop = 0;
+volatile sig_atomic_t stop = 0;
 pthread_mutex_t print_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
