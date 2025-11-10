@@ -6,9 +6,6 @@ on:
     tags:
       - 'v*'  # Trigger on version tags like v1.0.0, v1.0.1, etc.
 
-permissions:
-  contents: write
-
 jobs:
   build-packages:
     name: Build OpenWrt ${{ matrix.openwrt_version }} Package
