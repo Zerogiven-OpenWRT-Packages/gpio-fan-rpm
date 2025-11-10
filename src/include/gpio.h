@@ -4,7 +4,7 @@
  * @author CSoellinger
  * @date 2025
  * @license GPL-3.0-only
- * 
+ *
  * This module provides a unified interface for GPIO operations across
  * different libgpiod versions (v1 and v2) used in OpenWRT 23.05 and 24.10.
  */
@@ -15,20 +15,11 @@
 #include <gpiod.h>
 #include <pthread.h>
 #include <stdint.h>
+#include "format.h"  // For output_mode_t
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * @brief Output modes for the RPM measurement
- */
-typedef enum {
-    MODE_DEFAULT,    /**< Human-readable output */
-    MODE_NUMERIC,    /**< Numeric output only */
-    MODE_JSON,       /**< JSON format output */
-    MODE_COLLECTD    /**< collectd PUTVAL format */
-} output_mode_t;
 
 /**
  * @brief Thread arguments structure

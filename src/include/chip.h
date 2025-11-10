@@ -35,12 +35,24 @@ void chip_close(struct gpiod_chip *chip);
 
 /**
  * @brief Auto-detect available GPIO chip for given line
- * 
+ *
  * @param gpio GPIO line number
  * @param chipname_out Output parameter for chip name (caller must free)
  * @return struct gpiod_chip* Chip object or NULL on error
  */
 struct gpiod_chip* chip_auto_detect(int gpio, char **chipname_out);
+
+/**
+ * @brief Auto-detect GPIO chip and immediately close it
+ *
+ * Convenience function that auto-detects the chip and closes it immediately.
+ * Useful when you only need the chip name, not the chip handle.
+ *
+ * @param gpio GPIO line number
+ * @param chipname_out Output parameter for chip name (caller must free)
+ * @return int 0 on success, -1 on error
+ */
+int chip_auto_detect_for_name(int gpio, char **chipname_out);
 
 /**
  * @brief Get chip information

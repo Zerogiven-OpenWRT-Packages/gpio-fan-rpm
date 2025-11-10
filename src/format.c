@@ -127,11 +127,34 @@ char* format_collectd(int gpio, double rpm, int duration) {
 char* format_human_readable(int gpio, double rpm) {
     char *buf = malloc(HUMAN_BUFFER_SIZE);
     if (!buf) return NULL;
-    
+
     if (snprintf(buf, HUMAN_BUFFER_SIZE, "GPIO%d: RPM: %.0f\n", gpio, rpm) >= HUMAN_BUFFER_SIZE) {
         free(buf);
         return NULL;
     }
-    
+
     return buf;
+}
+
+/**
+ * @brief Format RPM output according to specified mode
+ *
+ * @param gpio GPIO number
+ * @param rpm RPM value to format
+ * @param mode Output format mode
+ * @param duration Measurement duration (used for collectd format)
+ * @return char* Formatted string (caller must free), NULL on error
+ */
+char* format_output(int gpio, double rpm, output_mode_t mode, int duration) {
+    switch (mode) {
+    case MODE_NUMERIC:
+        return format_numeric(rpm);
+    case MODE_JSON:
+        return format_json(gpio, rpm);
+    case MODE_COLLECTD:
+        return format_collectd(gpio, rpm, duration);
+    case MODE_DEFAULT:
+    default:
+        return format_human_readable(gpio, rpm);
+    }
 } 

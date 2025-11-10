@@ -88,6 +88,18 @@ struct gpiod_chip* chip_auto_detect(int gpio, char **chipname_out) {
     return NULL;
 }
 
+int chip_auto_detect_for_name(int gpio, char **chipname_out) {
+    if (!chipname_out) return -1;
+
+    struct gpiod_chip *chip = chip_auto_detect(gpio, chipname_out);
+    if (chip) {
+        chip_close(chip);
+        return 0;
+    }
+
+    return -1;
+}
+
 struct gpiod_chip_info* chip_get_info(struct gpiod_chip *chip) {
     if (!chip) return NULL;
 #ifdef LIBGPIOD_V2

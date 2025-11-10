@@ -4,7 +4,7 @@
  * @author CSoellinger
  * @date 2025
  * @license GPL-3.0-only
- * 
+ *
  * This module provides functions to format RPM measurements in various
  * output formats including human-readable, JSON, numeric, and collectd.
  */
@@ -15,6 +15,14 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// Forward declaration to avoid circular dependency
+typedef enum {
+    MODE_DEFAULT,
+    MODE_NUMERIC,
+    MODE_JSON,
+    MODE_COLLECTD
+} output_mode_t;
 
 /**
  * @brief Format RPM as numeric string (with newline)
@@ -63,14 +71,29 @@ char* format_collectd(int gpio, double rpm, int duration);
 
 /**
  * @brief Format human-readable output
- * 
+ *
  * @param gpio GPIO number
  * @param rpm RPM value to format
  * @return char* Formatted string (caller must free), NULL on error
- * 
+ *
  * @note Returns a newly allocated string that must be freed by the caller
  */
 char* format_human_readable(int gpio, double rpm);
+
+/**
+ * @brief Format RPM output according to specified mode
+ *
+ * Helper function that dispatches to appropriate formatting function based on mode.
+ *
+ * @param gpio GPIO number
+ * @param rpm RPM value to format
+ * @param mode Output format mode
+ * @param duration Measurement duration (used for collectd format)
+ * @return char* Formatted string (caller must free), NULL on error
+ *
+ * @note Returns a newly allocated string that must be freed by the caller
+ */
+char* format_output(int gpio, double rpm, output_mode_t mode, int duration);
 
 #ifdef __cplusplus
 }

@@ -362,23 +362,7 @@ void* gpio_thread_fn(void *arg) {
             } else {
                 // Fallback: direct output if no synchronization primitives available
                 pthread_mutex_lock(&print_mutex);
-                char *output = NULL;
-                
-                switch (a->mode) {
-                case MODE_NUMERIC:
-                    output = format_numeric(rpm);
-                    break;
-                case MODE_JSON:
-                    output = format_json(a->gpio, rpm);
-                    break;
-                case MODE_COLLECTD:
-                    output = format_collectd(a->gpio, rpm, a->duration);
-                    break;
-                default:
-                    output = format_human_readable(a->gpio, rpm);
-                    break;
-                }
-                
+                char *output = format_output(a->gpio, rpm, a->mode, a->duration);
                 if (output) {
                     printf("%s", output);
                     free(output);

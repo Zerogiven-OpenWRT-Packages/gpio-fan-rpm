@@ -46,12 +46,7 @@ int run_single_measurement(int *gpios, size_t ngpio, char *chipname,
     
     // Auto-detect chip once for all GPIOs if not specified
     if (!chipname) {
-        // Use the first GPIO to detect the chip
-        chipname = NULL;
-        struct gpiod_chip *test_chip = chip_auto_detect(gpios[0], &chipname);
-        if (test_chip) {
-            chip_close(test_chip);
-        } else {
+        if (chip_auto_detect_for_name(gpios[0], &chipname) < 0) {
             fprintf(stderr, "Error: cannot auto-detect GPIO chip\n");
             pthread_mutex_destroy(&results_mutex);
             pthread_cond_destroy(&all_finished);
@@ -133,23 +128,8 @@ int run_single_measurement(int *gpios, size_t ngpio, char *chipname,
         if (results[i] < 0.0) {
             continue;
         }
-        
-        char *output = NULL;
-        switch (mode) {
-        case MODE_NUMERIC:
-            output = format_numeric(results[i]);
-            break;
-        case MODE_JSON:
-            output = format_json(gpios[i], results[i]);
-            break;
-        case MODE_COLLECTD:
-            output = format_collectd(gpios[i], results[i], duration);
-            break;
-        default:
-            output = format_human_readable(gpios[i], results[i]);
-            break;
-        }
-        
+
+        char *output = format_output(gpios[i], results[i], mode, duration);
         if (output) {
             printf("%s", output);
             free(output);
