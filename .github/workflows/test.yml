@@ -15,7 +15,6 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
       - name: Get Version from Tag
-        if: startsWith(github.event.ref, 'refs/tags/v')
         id: tagver
         uses: ChrSchu90/GitTagSemanticVersion@v1.1
 
