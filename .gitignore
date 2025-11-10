@@ -8,6 +8,7 @@
 *.dll
 *.dylib
 /gpio-fan-rpm
+CLAUDE.md
 
 # OpenWRT build artifacts
 *.ipk
@@ -27,4 +28,4 @@ Thumbs.db
 
 # Temporary files
 *.tmp
-*.log 
+*.log
