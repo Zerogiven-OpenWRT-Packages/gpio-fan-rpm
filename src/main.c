@@ -68,10 +68,10 @@ int main(int argc, char **argv) {
     
     // Set up signal handlers for graceful shutdown
     if (signal(SIGINT, signal_handler) == SIG_ERR) {
-        fprintf(stderr, "Warning: Failed to set up SIGINT handler\n");
+        fprintf(stderr, "Warning: failed to set up SIGINT handler\n");
     }
     if (signal(SIGTERM, signal_handler) == SIG_ERR) {
-        fprintf(stderr, "Warning: Failed to set up SIGTERM handler\n");
+        fprintf(stderr, "Warning: failed to set up SIGTERM handler\n");
     }
     
     // Run appropriate measurement mode
@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
     if (measurement_result != 0) {
         exit_code = 1;
         if (!debug) {
-            fprintf(stderr, "Error: Measurement failed. Use --debug for details.\n");
+            fprintf(stderr, "Error: measurement failed (use --debug for details)\n");
         }
     }
     

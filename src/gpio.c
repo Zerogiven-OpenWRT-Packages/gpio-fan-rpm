@@ -245,7 +245,7 @@ double gpio_measure_rpm(gpio_context_t *ctx, int pulses_per_rev, int duration, i
             continue;
         }
         if (gpio_read_event(ctx) < 0) {
-            if (debug) fprintf(stderr, "Warning: Error reading event during measurement\n");
+            if (debug) fprintf(stderr, "Warning: error reading event during measurement\n");
             break;
         }
         
