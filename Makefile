@@ -36,8 +36,9 @@ define Package/$(PKG_NAME)
   SECTION:=utils
   CATEGORY:=Utilities
   TITLE:=GPIO Fan RPM Monitor
+  URL:=https://github.com/Zerogiven-OpenWRT-Packages/gpio-fan-rpm
+  MAINTAINER:=$(PKG_MAINTAINER)
   DEPENDS:=+libgpiod +libjson-c +libpthread +librt +libubox +libuci
-  PKGARCH:=all
 endef
 
 define Package/$(PKG_NAME)/description
@@ -62,7 +63,6 @@ TARGET_CFLAGS += -Wall -Wextra -pthread $(FPIC) \
 
 # Add libgpiod version to CFLAGS
 TARGET_CFLAGS += -DLIBGPIOD_VERSION=\"$(LIBGPIOD_VERSION)\"
-
 TARGET_LDFLAGS += -pthread -lrt -luci -lubox
 
 # Pass library search paths explicitly using standard OpenWRT variables
