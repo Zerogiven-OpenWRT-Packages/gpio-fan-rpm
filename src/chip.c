@@ -16,11 +16,14 @@
 
 struct gpiod_chip* chip_open_by_name(const char *name) {
     if (!name) return NULL;
-    
+
 #ifdef LIBGPIOD_V2
     // For libgpiod v2, construct the device path
     char path[64];
-    snprintf(path, sizeof(path), "/dev/%s", name);
+    int n = snprintf(path, sizeof(path), "/dev/%s", name);
+    if (n < 0 || n >= (int)sizeof(path)) {
+        return NULL; // Path truncated or error
+    }
     return gpiod_chip_open(path);
 #else
     return gpiod_chip_open_by_name(name);
@@ -41,8 +44,11 @@ struct gpiod_chip* chip_auto_detect(int gpio, char **chipname_out) {
     
     // Try gpiochip0 through gpiochip9
     for (int i = 0; i < 10; i++) {
-        snprintf(name, sizeof(name), "gpiochip%d", i);
-        
+        int n = snprintf(name, sizeof(name), "gpiochip%d", i);
+        if (n < 0 || n >= (int)sizeof(name)) {
+            continue; // Skip if name was truncated
+        }
+
         struct gpiod_chip *chip = chip_open_by_name(name);
         if (!chip) continue;
         
@@ -115,10 +121,12 @@ size_t chip_get_num_lines(struct gpiod_chip *chip) {
 /**
  * @brief Get chip name from chip info
  *
+ * NOTE: Currently unused but reserved for future debugging/informational features.
+ *
  * @param chip Chip object
  * @return char* Allocated string with chip name or NULL on error. Caller must free().
  */
-char* chip_get_name(struct gpiod_chip *chip) {
+__attribute__((unused)) char* chip_get_name(struct gpiod_chip *chip) {
     if (!chip) return NULL;
 
 #ifdef LIBGPIOD_V2
@@ -140,10 +148,12 @@ char* chip_get_name(struct gpiod_chip *chip) {
 /**
  * @brief Get chip label from chip info
  *
+ * NOTE: Currently unused but reserved for future debugging/informational features.
+ *
  * @param chip Chip object
  * @return char* Allocated string with chip label or NULL on error. Caller must free().
  */
-char* chip_get_label(struct gpiod_chip *chip) {
+__attribute__((unused)) char* chip_get_label(struct gpiod_chip *chip) {
     if (!chip) return NULL;
 
 #ifdef LIBGPIOD_V2
