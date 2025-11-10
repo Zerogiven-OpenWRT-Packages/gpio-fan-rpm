@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <errno.h>
+#include <signal.h>
 #include <pthread.h>
 #include <poll.h>
 #include "gpio.h"
@@ -23,7 +24,7 @@
 #include "format.h"
 
 // Global variables (extern declaration - defined in main.c)
-extern volatile int stop;
+extern volatile sig_atomic_t stop;
 extern pthread_mutex_t print_mutex;
 
 gpio_context_t* gpio_init(int gpio, const char *chipname) {
@@ -41,6 +42,12 @@ gpio_context_t* gpio_init(int gpio, const char *chipname) {
             return NULL;
         }
         ctx->chipname = strdup(chipname);
+        if (!ctx->chipname) {
+            fprintf(stderr, "Error: memory allocation failed\n");
+            chip_close(ctx->chip);
+            free(ctx);
+            return NULL;
+        }
     } else {
         // Auto-detect chip (this should rarely happen now)
         ctx->chip = chip_auto_detect(gpio, &ctx->chipname);
@@ -191,17 +198,25 @@ double gpio_measure_rpm(gpio_context_t *ctx, int pulses_per_rev, int duration, i
     // Warmup phase - simple 1-second wait
     struct timespec warmup_end_ts = start_ts;
     warmup_end_ts.tv_sec += warmup_duration;
-    
-    while (1) {
+
+    while (!stop) {
         struct timespec current_ts;
         clock_gettime(CLOCK_MONOTONIC, &current_ts);
         if (current_ts.tv_sec >= warmup_end_ts.tv_sec) {
             break; // Warmup time completed
         }
-        
+
         // Wait for events during warmup (non-blocking)
-        gpio_wait_event(ctx, 100000000LL); // 100ms timeout
-        gpio_read_event(ctx); // Read and discard any events
+        int wait_result = gpio_wait_event(ctx, 100000000LL); // 100ms timeout
+        if (wait_result > 0) {
+            gpio_read_event(ctx); // Only read if event is available
+        }
+        // If timeout (wait_result == 0) or error (wait_result < 0), just continue
+    }
+
+    // Check if interrupted during warmup
+    if (stop) {
+        return -1.0; // Interrupted during warmup
     }
     
     // Measurement phase - run for full measurement duration

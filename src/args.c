@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <errno.h>
+#include <limits.h>
 #include <uci.h>
 #include "args.h"
 
@@ -32,7 +33,31 @@
 #define LIBGPIOD_VERSION_STR STR(LIBGPIOD_VERSION)
 #endif
 
+/**
+ * @brief Safely convert string to integer with error checking
+ *
+ * @param str String to convert
+ * @param result Pointer to store result
+ * @return int 0 on success, -1 on error
+ */
+static int safe_str_to_int(const char *str, int *result) {
+    if (!str || !result) return -1;
 
+    char *endptr;
+    errno = 0;
+    long val = strtol(str, &endptr, 10);
+
+    // Check for various error conditions
+    if (errno == ERANGE || val > INT_MAX || val < INT_MIN) {
+        return -1; // Overflow/underflow
+    }
+    if (endptr == str || *endptr != '\0') {
+        return -1; // No conversion or trailing characters
+    }
+
+    *result = (int)val;
+    return 0;
+}
 
 // Function to load default values from UCI configuration and environment variables
 int load_uci_defaults(int *duration, int *pulses) {
@@ -42,11 +67,19 @@ int load_uci_defaults(int *duration, int *pulses) {
     const char *env_debug = getenv("DEBUG");
     
     if (env_duration) {
-        *duration = atoi(env_duration);
+        int temp;
+        if (safe_str_to_int(env_duration, &temp) == 0) {
+            *duration = temp;
+        }
+        // Silently ignore invalid env values
     }
-    
+
     if (env_pulses) {
-        *pulses = atoi(env_pulses);
+        int temp;
+        if (safe_str_to_int(env_pulses, &temp) == 0) {
+            *pulses = temp;
+        }
+        // Silently ignore invalid env values
     }
     
     // Return debug flag if set
@@ -68,15 +101,16 @@ int load_uci_defaults(int *duration, int *pulses) {
     struct uci_section *s = uci_lookup_section(ctx, pkg, "defaults");
     if (s) {
         const char *val;
-        
+        int temp;
+
         val = uci_lookup_option_string(ctx, s, "duration");
-        if (val) {
-            *duration = atoi(val);
+        if (val && safe_str_to_int(val, &temp) == 0) {
+            *duration = temp;
         }
-        
+
         val = uci_lookup_option_string(ctx, s, "pulses");
-        if (val) {
-            *pulses = atoi(val);
+        if (val && safe_str_to_int(val, &temp) == 0) {
+            *pulses = temp;
         }
     }
     
@@ -167,40 +201,49 @@ int parse_arguments(int argc, char **argv, int **gpios, size_t *ngpio,
                 return -1;
             }
             
-            // Check for non-numeric characters
-            for (const char *p = optarg; *p; p++) {
-                if (*p < '0' || *p > '9') {
-                    fprintf(stderr, "\nError: GPIO pin must be a number (0-999), got '%s'\n\n", optarg);
-                    fprintf(stderr, "Try: %s --help\n\n", argv[0]);
-                    return -1;
-                }
+            int gpio_val;
+            if (safe_str_to_int(optarg, &gpio_val) != 0) {
+                fprintf(stderr, "\nError: GPIO pin must be a valid number, got '%s'\n\n", optarg);
+                fprintf(stderr, "Try: %s --help\n\n", argv[0]);
+                return -1;
             }
-            
-            int gpio_val = atoi(optarg);
             if (gpio_val < 0 || gpio_val > 999) {
                 fprintf(stderr, "\nError: GPIO pin %d is out of valid range (0-999)\n\n", gpio_val);
                 fprintf(stderr, "Try: %s --help\n\n", argv[0]);
                 return -1;
             }
-            
-            *gpios = realloc(*gpios, (*ngpio + 1) * sizeof(**gpios));
-            if (!*gpios) {
+
+            int *temp = realloc(*gpios, (*ngpio + 1) * sizeof(**gpios));
+            if (!temp) {
                 fprintf(stderr, "\nError: memory allocation failed\n\n");
+                free(*gpios);
+                *gpios = NULL;
                 return -1;
             }
+            *gpios = temp;
             (*gpios)[*ngpio] = gpio_val;
             (*ngpio)++;
             break;
-        case 'c': 
-            *chipname = strdup(optarg); 
+        case 'c':
+            *chipname = strdup(optarg);
+            if (!*chipname) {
+                fprintf(stderr, "\nError: memory allocation failed\n\n");
+                free(*gpios);
+                *gpios = NULL;
+                return -1;
+            }
             break;
-        case 'd': 
+        case 'd':
             if (!optarg || *optarg == '\0') {
                 fprintf(stderr, "\nError: --duration requires a number\n\n");
                 fprintf(stderr, "Try: %s --help\n\n", argv[0]);
                 return -1;
             }
-            *duration = atoi(optarg);
+            if (safe_str_to_int(optarg, duration) != 0) {
+                fprintf(stderr, "\nError: --duration must be a valid number, got '%s'\n\n", optarg);
+                fprintf(stderr, "Try: %s --help\n\n", argv[0]);
+                return -1;
+            }
             if (*duration < 2) {
                 fprintf(stderr, "\nError: duration must be at least 2 seconds for accurate measurements\n");
                 fprintf(stderr, "  Minimum 2s allows for 1s warmup + 1s measurement\n");
@@ -213,13 +256,17 @@ int parse_arguments(int argc, char **argv, int **gpios, size_t *ngpio,
                 return -1;
             }
             break;
-        case 'p': 
+        case 'p':
             if (!optarg || *optarg == '\0') {
                 fprintf(stderr, "\nError: --pulses requires a number\n\n");
                 fprintf(stderr, "Try: %s --help\n\n", argv[0]);
                 return -1;
             }
-            *pulses = atoi(optarg);
+            if (safe_str_to_int(optarg, pulses) != 0) {
+                fprintf(stderr, "\nError: --pulses must be a valid number, got '%s'\n\n", optarg);
+                fprintf(stderr, "Try: %s --help\n\n", argv[0]);
+                return -1;
+            }
             if (*pulses < 1 || *pulses > 100) {
                 fprintf(stderr, "\nError: pulses must be between 1 and 100\n\n");
                 fprintf(stderr, "Try: %s --help\n\n", argv[0]);
