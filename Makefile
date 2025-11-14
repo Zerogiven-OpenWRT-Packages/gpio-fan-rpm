@@ -11,7 +11,7 @@ PKG_VERSION := 1.1.0
 PKG_RELEASE := 1
 
 PKG_MAINTAINER     := CSoellinger
-PKG_LICENSE        := GPL-3.0-only
+PKG_LICENSE        := GPL-3.0
 PKG_LICENSE_FILES  := LICENSE
 PKG_COPYRIGHT_YEAR := $(shell date +%Y)
 
@@ -44,7 +44,7 @@ endef
 define Package/$(PKG_NAME)/description
   High-precision command-line utility for measuring fan RPM using GPIO pins on OpenWRT devices.
   Compatible with both OpenWRT 23.05 (libgpiod v1) and 24.10 (libgpiod v2).
-  
+
   Features:
   - Edge-event-based RPM detection using libgpiod
   - Multithreaded measurement for multiple GPIOs in parallel
@@ -54,18 +54,15 @@ define Package/$(PKG_NAME)/description
   - Auto-detection of GPIO chip if not specified
 endef
 
-# Enable pthread and link required libraries
 TARGET_CFLAGS += -Wall -Wextra -pthread $(FPIC) \
   -DPKG_TAG=\"$(PKG_VERSION)-r$(PKG_RELEASE)\" \
   -DPKG_MAINTAINER=\"$(PKG_MAINTAINER)\" \
   -DPKG_LICENSE=\"$(PKG_LICENSE)\" \
   -DPKG_COPYRIGHT_YEAR=\"$(PKG_COPYRIGHT_YEAR)\"
 
-# Add libgpiod version to CFLAGS
 TARGET_CFLAGS += -DLIBGPIOD_VERSION=\"$(LIBGPIOD_VERSION)\"
 TARGET_LDFLAGS += -pthread -lrt -luci -lubox
 
-# Pass library search paths explicitly using standard OpenWRT variables
 define Build/Compile
 	$(MAKE) -C $(PKG_BUILD_DIR) \
 		CC="$(TARGET_CC)" \
@@ -77,9 +74,9 @@ endef
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/gpio-fan-rpm $(1)/usr/sbin/gpio-fan-rpm
-	
+
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) ./files/etc/config/gpio-fan-rpm $(1)/etc/config/
+	$(INSTALL_CONF) ./gpio-fan-rpm $(1)/etc/config/gpio-fan-rpm
 endef
 
-$(eval $(call BuildPackage,$(PKG_NAME))) 
+$(eval $(call BuildPackage,$(PKG_NAME)))
