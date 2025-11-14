@@ -11,7 +11,7 @@ PKG_VERSION := 1.1.0
 PKG_RELEASE := 1
 
 PKG_MAINTAINER     := CSoellinger
-PKG_LICENSE        := GPL-3.0
+PKG_LICENSE        := GPL-3.0-only
 PKG_LICENSE_FILES  := LICENSE
 PKG_COPYRIGHT_YEAR := $(shell date +%Y)
 
@@ -76,7 +76,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/gpio-fan-rpm $(1)/usr/sbin/gpio-fan-rpm
 
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) ./gpio-fan-rpm $(1)/etc/config/gpio-fan-rpm
+	$(INSTALL_CONF) ./files/gpio-fan-rpm $(1)/etc/config/gpio-fan-rpm
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))

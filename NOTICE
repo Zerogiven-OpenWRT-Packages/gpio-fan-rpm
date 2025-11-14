@@ -1,5 +1,6 @@
 GPIO Fan RPM for OpenWRT
 Copyright (C) 2025 CSoellinger
+Licensed under: GPL-3.0-only
 
 This software uses the following third-party libraries:
 
