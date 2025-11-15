@@ -11,7 +11,7 @@ PKG_VERSION := 1.1.0
 PKG_RELEASE := 1
 
 PKG_MAINTAINER     := CSoellinger
-PKG_LICENSE        := GPL-3.0-only
+PKG_LICENSE        := LGPL-3.0-or-later
 PKG_LICENSE_FILES  := LICENSE
 PKG_COPYRIGHT_YEAR := $(shell date +%Y)
 

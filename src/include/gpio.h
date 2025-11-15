@@ -3,7 +3,7 @@
  * @brief GPIO interface for fan RPM measurement
  * @author CSoellinger
  * @date 2025
- * @license GPL-3.0-only
+ * @license LGPL-3.0-or-later
  *
  * This module provides a unified interface for GPIO operations across
  * different libgpiod versions (v1 and v2) used in OpenWRT 23.05 and 24.10.

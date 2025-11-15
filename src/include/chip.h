@@ -3,7 +3,7 @@
  * @brief GPIO chip management operations
  * @author CSoellinger
  * @date 2025
- * @license GPL-3.0-only
+ * @license LGPL-3.0-or-later
  *
  * This module handles GPIO chip operations with compatibility for both
  * libgpiod v1 and v2.

@@ -108,7 +108,7 @@ LoadPlugin exec
 
 ## License
 
-GPL-3.0-only. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for third-party attributions (libgpiod, libjson-c).
+LGPL-3.0-or-later. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for third-party attributions (libgpiod, libjson-c).
 
 ---
 

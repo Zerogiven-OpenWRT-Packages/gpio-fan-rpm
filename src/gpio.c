@@ -3,7 +3,7 @@
  * @brief GPIO operations for fan RPM measurement
  * @author CSoellinger
  * @date 2025
- * @license GPL-3.0-only
+ * @license LGPL-3.0-or-later
  * 
  * This module implements GPIO operations with compatibility for both
  * libgpiod v1 (OpenWRT 23.05) and libgpiod v2 (OpenWRT 24.10).

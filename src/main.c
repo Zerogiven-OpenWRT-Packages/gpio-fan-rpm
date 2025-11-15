@@ -3,7 +3,7 @@
  * @brief Main entry point for gpio-fan-rpm utility
  * @author CSoellinger
  * @date 2025
- * @license GPL-3.0-only
+ * @license LGPL-3.0-or-later
  * 
  * This module orchestrates the RPM measurement process by parsing arguments,
  * setting up signal handling, and delegating to appropriate measurement modules.
