@@ -112,7 +112,7 @@ jobs:
 
       - name: Prepare assets
         run: |
-          for f in ${{ github.workspace }}/release-assets/reaction-*.ipk; do
+          for f in ${{ github.workspace }}/release-assets/gpio-fan-rpm-*.ipk; do
               [ -f "$f" ] || continue
               ver=$(echo "$f" | sed -E 's/.*-([0-9]+\.[0-9]+)-.*/\1/')
               mkdir -p "${{ github.workspace }}/release-assets/$ver"
