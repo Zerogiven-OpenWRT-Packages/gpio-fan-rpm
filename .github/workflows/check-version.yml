@@ -23,4 +23,4 @@ jobs:
           COMMIT_TOKEN: ${{ secrets.OWRT_PACKAGE_RELEASE_TOKEN }}
           REPO: CSoellinger/gpio-fan-rpm
           BRANCH: main
-          SOURCE_URL: https://codeload.github.com/CSoellinger/gpio-fan-rpm/tar.gz/refs/tags/{{version}}?
+          SOURCE_URL: https://codeload.github.com/CSoellinger/gpio-fan-rpm/tar.gz/refs/tags/v{{version}}?
