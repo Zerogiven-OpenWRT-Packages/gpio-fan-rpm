@@ -1,6 +1,8 @@
 # GPIO Fan RPM for OpenWRT
 
-High-precision command-line utility for measuring fan RPM using GPIO edge detection on OpenWRT.
+This is an OpenWRT package for [https://github.com/CSoellinger/gpio-fan-rpm](https://github.com/CSoellinger/gpio-fan-rpm).
+
+A high-precision command-line utility for measuring fan RPM using GPIO edge detection on OpenWRT.
 
 ## Features
 
@@ -57,8 +59,6 @@ gpio-fan-rpm --gpio=17 --gpio=18              # Multiple fans
 - Default: 4 pulses/revolution (common for PC fans)
 
 **Common fan pulse counts:** Noctua NF-A6x25 (4), most Noctua (2), PC fans (2-4)
-
-**UCI configuration:** Defaults configurable via `/etc/config/gpio-fan-rpm`
 
 ## Output Formats
 
