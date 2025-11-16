@@ -1,10 +1,9 @@
 name: Build OpenWRT package (release)
 
-# Trigger on version tags only
 on:
   push:
     tags:
-      - 'v*'  # Trigger on version tags like v1.0.0, v1.0.1, etc.
+      - 'v*'
 
 jobs:
   build-packages:
