@@ -1,11 +1,10 @@
 # GPIO Fan RPM for OpenWRT
 
-High-precision command-line utility for measuring fan RPM using GPIO edge detection on OpenWRT. Compatible with both OpenWRT 23.05 (libgpiod v1) and 24.10 (libgpiod v2).
+High-precision command-line utility for measuring fan RPM using GPIO edge detection on OpenWRT.
 
 ## Features
 
 - **High Precision**: Event-driven timerfd timing with ±1 RPM accuracy for stable fans
-- **Cross-version**: Works with libgpiod v1 (OpenWRT 23.05) and v2 (24.10)
 - **Multiple Formats**: Human-readable, JSON, numeric, and collectd output
 - **Watch Mode**: Continuous monitoring with graceful quit (press 'q')
 - **Multi-GPIO**: Parallel measurement of multiple fans simultaneously
@@ -25,7 +24,7 @@ make menuconfig  # Navigate to: Utilities → gpio-fan-rpm
 make package/gpio-fan-rpm/compile V=s
 ```
 
-**Requirements:** OpenWRT 23.05/24.10, libgpiod, libjson-c (auto-installed), fan with tachometer output
+**Requirements:** OpenWRT 24.10, libgpiod, libjson-c (auto-installed), fan with tachometer output
 
 ## Usage
 
@@ -94,7 +93,6 @@ PUTVAL "hostname/gpio-fan-17/gauge-rpm" interval=2 1719272100:1235
 ## Technical Details
 
 - **Timing**: Event-driven timerfd for precise measurements (eliminates polling overhead)
-- **Compatibility**: Auto-detects libgpiod v1 (23.05) or v2 (24.10) at compile time
 - **Architecture**: Multithreaded (one thread per GPIO), edge detection (both rising/falling)
 - **Signals**: Graceful shutdown on SIGINT/SIGTERM
 

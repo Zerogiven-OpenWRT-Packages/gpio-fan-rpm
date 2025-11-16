@@ -22,17 +22,6 @@ jobs:
           - openwrt_version: '24.10'
             openwrt_build_version: '24.10.3'
             arch: 'aarch64_cortex-a53'
-
-          # 23.05
-          - openwrt_version: '23.05'
-            openwrt_build_version: '23.05.6'
-            arch: 'x86_64'
-          - openwrt_version: '23.05'
-            openwrt_build_version: '23.05.6'
-            arch: 'arm_cortex-a9'
-          - openwrt_version: '23.05'
-            openwrt_build_version: '23.05.6'
-            arch: 'aarch64_cortex-a53'
       fail-fast: false
 
     outputs:
@@ -110,22 +99,12 @@ jobs:
           pattern: gpio-fan-rpm-*.ipk
           merge-multiple: true
 
-      - name: Prepare assets
-        run: |
-          for f in ${{ github.workspace }}/release-assets/reaction-*.ipk; do
-              [ -f "$f" ] || continue
-              ver=$(echo "$f" | sed -E 's/.*-([0-9]+\.[0-9]+)-.*/\1/')
-              mkdir -p "${{ github.workspace }}/release-assets/$ver"
-              mv "$f" "${{ github.workspace }}/release-assets/$ver/$f"
-          done
-
       - name: Create GitHub Release & upload assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.build-packages.outputs.tag_name }}
           files: |
-            ${{ github.workspace }}/release-assets/24.10/*.ipk
-            ${{ github.workspace }}/release-assets/23.05/*.ipk
+            ${{ github.workspace }}/release-assets/*.ipk
           preserve_order: true
           draft: false
           prerelease: false
