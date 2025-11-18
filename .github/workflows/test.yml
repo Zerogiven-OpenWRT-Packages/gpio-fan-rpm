@@ -1,4 +1,4 @@
-name: Version bump
+name: Test workflow
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  bump:
+  test:
     runs-on: ubuntu-latest
 
     steps:
