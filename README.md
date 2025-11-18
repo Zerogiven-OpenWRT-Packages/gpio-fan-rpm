@@ -4,6 +4,8 @@ This is an OpenWRT package for [https://github.com/CSoellinger/gpio-fan-rpm](htt
 
 A high-precision command-line utility for measuring fan RPM using GPIO edge detection on OpenWRT.
 
+If you need support for OpenWRT 23.05 install version 1.x.
+
 ## Features
 
 - **High Precision**: Event-driven timerfd timing with ±1 RPM accuracy for stable fans
