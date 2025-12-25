@@ -51,7 +51,23 @@ jobs:
             echo "found=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Test version change
+      - name: Create and Push Tag
+        if: steps.get_makefile_old_version.outputs.version != steps.get_makefile_version.outputs.version
+        env:
+          GITHUB_TOKEN: ${{ secrets.OWRT_PACKAGE_RELEASE_TOKEN }}
         run: |
-          echo "Alte Version: ${{ steps.get_makefile_old_version.outputs.version }}"
-          echo "Neue Version: ${{ steps.get_makefile_version.outputs.version }}"
+          NEW_VER="${{ steps.get_makefile_version.outputs.version }}"
+          TAG_NAME="v$NEW_VER"
+
+          echo "🚀 New version: $NEW_VER. Create tag $TAG_NAME..."
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "⚠️ Tag $TAG_NAME already exists. Skip."
+          else
+            git tag "$TAG_NAME"
+            git push origin "$TAG_NAME"
+            echo "✅ Tag $TAG_NAME succesfully pushed."
+          fi
