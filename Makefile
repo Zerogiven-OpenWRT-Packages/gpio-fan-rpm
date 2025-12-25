@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=gpio-fan-rpm
-PKG_VERSION:=2.0.1
+PKG_VERSION:=2.1.0
 PKG_RELEASE:=1
 
 PKG_MAINTAINER     := CSoellinger
@@ -10,7 +10,7 @@ PKG_LICENSE_FILES  := LICENSE
 
 PKG_SOURCE:=v$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/CSoellinger/gpio-fan-rpm/archive/refs/tags/
-PKG_HASH:=405347fa3c2fdfcf61af7957f93f42a54ef32a8e52cac42df45869ddeba7d4f5
+PKG_HASH:=c1a1494569db3da607cb83fdbd7ce3368fa550f38cb750043e798fdc4b020fd6
 PKG_INSTALL:=1
 
 PKG_BUILD_DEPENDS:=libgpiod libjson-c
