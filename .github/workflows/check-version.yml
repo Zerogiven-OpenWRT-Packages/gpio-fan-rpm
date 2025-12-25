@@ -12,11 +12,24 @@ jobs:
     name: Check new version
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # To push a branch
+      contents: write
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Get old Version from Makefile
+        id: get_makefile_old_version
+        if: always()
+        run: |
+          MAKEFILE_PATH="${{ github.workspace }}/Makefile"
+          if [ -f "$MAKEFILE_PATH" ]; then
+            VERSION=$(grep "PKG_VERSION:=" "$MAKEFILE_PATH" | cut -d'=' -f2 | tr -d ' "')
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "found=true" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
 
       - uses: EkkoG/openwrt-packages-version-checker@main
         env:
@@ -24,3 +37,21 @@ jobs:
           REPO: CSoellinger/gpio-fan-rpm
           BRANCH: main
           SOURCE_URL: https://codeload.github.com/CSoellinger/gpio-fan-rpm/tar.gz/refs/tags/v{{version}}?
+
+      - name: Get Version from Makefile
+        id: get_makefile_version
+        if: always()
+        run: |
+          MAKEFILE_PATH="${{ github.workspace }}/Makefile"
+          if [ -f "$MAKEFILE_PATH" ]; then
+            VERSION=$(grep "PKG_VERSION:=" "$MAKEFILE_PATH" | cut -d'=' -f2 | tr -d ' "')
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "found=true" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Test version change
+        run: |
+          echo "Alte Version: ${{ steps.get_makefile_old_version.outputs.version }}"
+          echo "Neue Version: ${{ steps.get_makefile_version.outputs.version }}"
