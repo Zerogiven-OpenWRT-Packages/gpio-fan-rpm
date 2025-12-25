@@ -1,6 +1,7 @@
 name: Build OpenWRT package (release)
 
 on:
+  workflow_call:
   push:
     tags:
       - 'v*'
