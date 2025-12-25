@@ -10,7 +10,7 @@ PKG_LICENSE_FILES  := LICENSE
 
 PKG_SOURCE:=v$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/CSoellinger/gpio-fan-rpm/archive/refs/tags/
-PKG_HASH:=bd3fab724490cedab41eec0fca81dc1b68d5ebbb86f9e2db9f88914144348467
+PKG_HASH:=c1a1494569db3da607cb83fdbd7ce3368fa550f38cb750043e798fdc4b020fd6
 PKG_INSTALL:=1
 
 PKG_BUILD_DEPENDS:=libgpiod libjson-c
