@@ -13,4 +13,4 @@ config PACKAGE_gpio-fan-rpm
 	  - JSON, numeric and collectd-compatible output
 	  - Auto-detection of GPIO chip if not specified
 
-	  This package requires libgpiod, libjson-c, and libpthread.
+	  This package requires libgpiod and libpthread.

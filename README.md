@@ -1,10 +1,12 @@
-# GPIO Fan RPM for OpenWRT
+# GPIO Fan RPM
 
-This is an OpenWRT package for [https://github.com/CSoellinger/gpio-fan-rpm](https://github.com/CSoellinger/gpio-fan-rpm).
+A high-precision command-line utility for measuring fan RPM using GPIO edge detection on OpenWrt.
 
-A high-precision command-line utility for measuring fan RPM using GPIO edge detection on OpenWRT.
+[![OpenWrt](https://img.shields.io/badge/OpenWrt-24.10.x-green.svg)](https://openwrt.org/)
 
-If you need support for OpenWRT 23.05 install version 1.x.
+This is an OpenWrt package for [https://github.com/CSoellinger/gpio-fan-rpm](https://github.com/CSoellinger/gpio-fan-rpm).
+
+If you need support for OpenWrt 23.05 install version 1.x.
 
 ## Features
 
@@ -14,27 +16,33 @@ If you need support for OpenWRT 23.05 install version 1.x.
 - **Multi-GPIO**: Parallel measurement of multiple fans simultaneously
 - **Efficient**: Event-driven design, minimal CPU and memory usage
 
+## Requirements
+
+- OpenWrt 24.10.x or later
+- libgpiod
+- Fan with tachometer output
+
 ## Installation
 
-**Package feed:**
+### From Package Feed
 
 You can setup this package feed to install and update it with opkg:
 
 [https://github.com/Zerogiven-OpenWRT-Packages/package-feed](https://github.com/Zerogiven-OpenWRT-Packages/package-feed)
 
-**Pre-built package:**
+### From IPK Package
+
 ```bash
 opkg install gpio-fan-rpm-*.ipk
 ```
 
-**Custom build:**
+### From Source
+
 ```bash
 git clone https://github.com/Zerogiven-OpenWRT-Packages/gpio-fan-rpm.git package/utils/gpio-fan-rpm
 make menuconfig  # Navigate to: Utilities → gpio-fan-rpm
 make package/gpio-fan-rpm/compile V=s
 ```
-
-**Requirements:** OpenWRT 24.10, libgpiod, libjson-c (auto-installed), fan with tachometer output
 
 ## Usage
 
@@ -61,14 +69,14 @@ gpio-fan-rpm --gpio=17 --gpio=18              # Multiple fans
 | `-h, --help` | Show help message |
 | `-v, --version` | Show version information |
 
-**Measurement behavior:**
+### Measurement Behavior
+
 - Total duration = 1s warmup + (duration-1)s measurement
 - Watch mode: press 'q' to quit, Ctrl+C to interrupt
 - Default: 4 pulses/revolution (common for PC fans)
+- Common fan pulse counts: Noctua NF-A6x25 (4), most Noctua (2), PC fans (2-4)
 
-**Common fan pulse counts:** Noctua NF-A6x25 (4), most Noctua (2), PC fans (2-4)
-
-## Output Formats
+### Output Formats
 
 ```bash
 # Human-readable (default)
@@ -96,15 +104,10 @@ PUTVAL "hostname/gpio-fan-17/gauge-rpm" interval=2 1719272100:1235
 | GPIO chip not found | Check chips: `ls /dev/gpiochip*` or `gpioinfo` |
 | No events detected | Verify fan spinning, check tachometer wire, try different GPIO |
 
-**Debug mode:** Use `--debug` for detailed timing and event information
+Use `--debug` for detailed timing and event information.
 
-## Technical Details
+### collectd Integration
 
-- **Timing**: Event-driven timerfd for precise measurements (eliminates polling overhead)
-- **Architecture**: Multithreaded (one thread per GPIO), edge detection (both rising/falling)
-- **Signals**: Graceful shutdown on SIGINT/SIGTERM
-
-**collectd integration example:**
 ```conf
 LoadPlugin exec
 <Plugin exec>
@@ -112,6 +115,8 @@ LoadPlugin exec
 </Plugin>
 ```
 
----
+## Technical Details
 
-**Developed for OpenWRT** • [Report Issues](https://github.com/Zerogiven-OpenWRT-Packages/gpio-fan-rpm/issues)
+- **Timing**: Event-driven timerfd for precise measurements (eliminates polling overhead)
+- **Architecture**: Multithreaded (one thread per GPIO), edge detection (both rising/falling)
+- **Signals**: Graceful shutdown on SIGINT/SIGTERM
