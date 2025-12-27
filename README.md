@@ -16,6 +16,12 @@ If you need support for OpenWRT 23.05 install version 1.x.
 
 ## Installation
 
+**Package feed:**
+
+You can setup this package feed to install and update it with opkg:
+
+[https://github.com/Zerogiven-OpenWRT-Packages/package-feed](https://github.com/Zerogiven-OpenWRT-Packages/package-feed)
+
 **Pre-built package:**
 ```bash
 opkg install gpio-fan-rpm-*.ipk
@@ -105,10 +111,6 @@ LoadPlugin exec
     Exec "nobody" "/usr/sbin/gpio-fan-rpm" "--gpio=17" "--numeric"
 </Plugin>
 ```
-
-## License
-
-LGPL-3.0-or-later. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for third-party attributions (libgpiod, libjson-c).
 
 ---
 
