@@ -1,12 +1,27 @@
+[![OpenWrt](https://img.shields.io/badge/OpenWrt-24.10.x-darkgreen.svg)](https://openwrt.org/)
+[![GitHub Release](https://img.shields.io/github/v/release/Zerogiven-OpenWRT-Packages/gpio-fan-rpm)](https://github.com/Zerogiven-OpenWRT-Packages/gpio-fan-rpm/releases)
+[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Zerogiven-OpenWRT-Packages/gpio-fan-rpm/total?color=blue)](https://github.com/Zerogiven-OpenWRT-Packages/gpio-fan-rpm/releases)
+[![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/Zerogiven-OpenWRT-Packages/gpio-fan-rpm)](https://github.com/Zerogiven-OpenWRT-Packages/gpio-fan-rpm/issues)
+
 # GPIO Fan RPM
 
 A high-precision command-line utility for measuring fan RPM using GPIO edge detection on OpenWrt.
 
-[![OpenWrt](https://img.shields.io/badge/OpenWrt-24.10.x-green.svg)](https://openwrt.org/)
-
 This is an OpenWrt package for [https://github.com/CSoellinger/gpio-fan-rpm](https://github.com/CSoellinger/gpio-fan-rpm).
 
-If you need support for OpenWrt 23.05 install version 1.x.
+> If you need support for OpenWrt 23.05 install version 1.x.
+
+<details>
+
+<summary>Navigation</summary>
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Technical Details](#technical-details)
+
+</details>
 
 ## Features
 
@@ -18,7 +33,7 @@ If you need support for OpenWrt 23.05 install version 1.x.
 
 ## Requirements
 
-- OpenWrt 24.10.x or later
+- OpenWrt 24.10
 - libgpiod
 - Fan with tachometer output
 
