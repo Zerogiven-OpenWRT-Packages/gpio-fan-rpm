@@ -1,19 +1,19 @@
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=gpio-fan-rpm
-PKG_VERSION:=2.1.1
-PKG_RELEASE:=2
+PKG_NAME    := gpio-fan-rpm
+PKG_VERSION := 2.2.0
+PKG_RELEASE := 1
 
 PKG_MAINTAINER     := CSoellinger
 PKG_LICENSE        := LGPL-3.0-or-later
 PKG_LICENSE_FILES  := LICENSE
 
-PKG_SOURCE:=v$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://github.com/CSoellinger/gpio-fan-rpm/archive/refs/tags/
-PKG_HASH:=bd3faa724490cedab41eec0fca81dc1b68d5ebbb86f9e2db9f88914144348467
-PKG_INSTALL:=1
+PKG_SOURCE         := v$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL     := https://github.com/CSoellinger/gpio-fan-rpm/archive/refs/tags/
+PKG_HASH           := bd3faa724490cedab41eec0fca81dc1b68d5ebbb86f9e2db9f88914144348467
+PKG_INSTALL        := 1
 
-PKG_BUILD_DEPENDS:=libgpiod
+PKG_BUILD_DEPENDS  := libgpiod
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
@@ -21,12 +21,12 @@ include $(INCLUDE_DIR)/cmake.mk
 CMAKE_OPTIONS += -DPKG_TAG=$(PKG_VERSION)-r$(PKG_RELEASE)
 
 define Package/$(PKG_NAME)
-  SECTION:=utils
-  CATEGORY:=Utilities
-  TITLE:=GPIO Fan RPM Monitor
-  URL:=https://github.com/Zerogiven-OpenWRT-Packages/gpio-fan-rpm
-  MAINTAINER:=$(PKG_MAINTAINER)
-  DEPENDS:=+libgpiod +libpthread
+  SECTION    := utils
+  CATEGORY   := Utilities
+  TITLE      := GPIO Fan RPM Monitor
+  URL        := $(PKG_SOURCE_URL)
+  MAINTAINER := $(PKG_MAINTAINER)
+  DEPENDS    := +libgpiod +libpthread
 endef
 
 define Package/$(PKG_NAME)/description
