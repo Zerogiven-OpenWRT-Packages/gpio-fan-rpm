@@ -43,7 +43,9 @@ jobs:
     with:
       package_name: 'gpio-fan-rpm'
       sdk_packages: 'gpio-fan-rpm'
-      artifacts_patterns: 'gpio-fan-rpm*.ipk'
+      artifacts_patterns: |
+        gpio-fan-rpm*.ipk
+        gpio-fan-rpm*.apk
       openwrt_version: ${{ matrix.openwrt_version }}
       openwrt_build_version: ${{ matrix.openwrt_build_version }}
       arch: ${{ matrix.arch }}
@@ -56,7 +58,6 @@ jobs:
     uses: Zerogiven/gh-openwrt-package-build-workflows/.github/workflows/reusable-release.yml@main
     with:
       artifact_pattern: 'gpio-fan-rpm-*'
-      release_file_pattern: '*.ipk'
       tag_name: ${{ github.ref_name }}
     secrets:
       RELEASE_TOKEN: ${{ secrets.OWRT_PACKAGE_RELEASE_TOKEN }}
