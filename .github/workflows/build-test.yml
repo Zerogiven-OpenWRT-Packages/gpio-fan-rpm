@@ -33,7 +33,7 @@ jobs:
             target: 'mediatek/filogic'
       fail-fast: false
 
-    uses: Zerogiven/gh-openwrt-package-build-workflows/.github/workflows/reusable-build.yml@main
+    uses: Zerogiven/gh-openwrt-package-build-workflows/.github/workflows/reusable-build.yml@prometheus-node-exporter-lua-patch
     with:
       package_name: 'gpio-fan-rpm'
       sdk_packages: 'gpio-fan-rpm'
