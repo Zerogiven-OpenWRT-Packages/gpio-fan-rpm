@@ -11,35 +11,60 @@ jobs:
     strategy:
       matrix:
         include:
+          # 25.12
+          - openwrt_version: '25.12'
+            openwrt_build_version: '25.12.2'
+            arch: 'x86_64'
+          - openwrt_version: '25.12'
+            openwrt_build_version: '25.12.2'
+            arch: 'aarch64_cortex-a53'
+          - openwrt_version: '25.12'
+            openwrt_build_version: '25.12.2'
+            arch: 'aarch64_cortex-a72'
+          - openwrt_version: '25.12'
+            openwrt_build_version: '25.12.2'
+            arch: 'arm_cortex-a7'
+          - openwrt_version: '25.12'
+            openwrt_build_version: '25.12.2'
+            arch: 'arm_cortex-a7_neon-vfpv4'
+          - openwrt_version: '25.12'
+            openwrt_build_version: '25.12.2'
+            arch: 'arm_cortex-a9'
+          - openwrt_version: '25.12'
+            openwrt_build_version: '25.12.2'
+            arch: 'mips_24kc'
+          - openwrt_version: '25.12'
+            openwrt_build_version: '25.12.2'
+            arch: 'mipsel_24kc'
+
           # 24.10
           - openwrt_version: '24.10'
-            openwrt_build_version: '24.10.3'
+            openwrt_build_version: '24.10.6'
             arch: 'x86_64'
           - openwrt_version: '24.10'
-            openwrt_build_version: '24.10.3'
+            openwrt_build_version: '24.10.6'
             arch: 'aarch64_cortex-a53'
           - openwrt_version: '24.10'
-            openwrt_build_version: '24.10.3'
+            openwrt_build_version: '24.10.6'
             arch: 'aarch64_cortex-a72'
           - openwrt_version: '24.10'
-            openwrt_build_version: '24.10.3'
+            openwrt_build_version: '24.10.6'
             arch: 'arm_cortex-a7'
           - openwrt_version: '24.10'
-            openwrt_build_version: '24.10.4'
+            openwrt_build_version: '24.10.6'
             arch: 'arm_cortex-a7_neon-vfpv4'
           - openwrt_version: '24.10'
-            openwrt_build_version: '24.10.3'
+            openwrt_build_version: '24.10.6'
             arch: 'arm_cortex-a9'
-
           - openwrt_version: '24.10'
-            openwrt_build_version: '24.10.4'
+            openwrt_build_version: '24.10.6'
             arch: 'mips_24kc'
           - openwrt_version: '24.10'
-            openwrt_build_version: '24.10.4'
+            openwrt_build_version: '24.10.6'
             arch: 'mipsel_24kc'
       fail-fast: false
 
-    uses: Zerogiven/gh-openwrt-package-build-workflows/.github/workflows/reusable-build.yml@main
+    uses: Zerogiven/gh-openwrt-package-build-workflows/.github/workflows/reusable-build.yml@prometheus-node-exporter-lua-patch
     with:
       package_name: 'gpio-fan-rpm'
       sdk_packages: 'gpio-fan-rpm'
@@ -55,7 +80,7 @@ jobs:
     needs: build-packages
     permissions:
       contents: write
-    uses: Zerogiven/gh-openwrt-package-build-workflows/.github/workflows/reusable-release.yml@main
+    uses: Zerogiven/gh-openwrt-package-build-workflows/.github/workflows/reusable-release.yml@prometheus-node-exporter-lua-patch
     with:
       artifact_pattern: 'gpio-fan-rpm-*'
       tag_name: ${{ github.ref_name }}
