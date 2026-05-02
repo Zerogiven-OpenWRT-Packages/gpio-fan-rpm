@@ -10,6 +10,7 @@ on:
         type: choice
         options:
         - '24.10'
+        - '25.12'
       verbose:
         description: 'Verbose build output'
         required: false
@@ -22,17 +23,13 @@ jobs:
       matrix:
         include:
           - openwrt_version: '25.12'
-            openwrt_build_version: '25.12.0-rc4'
-            arch: 'aarch64_cortex-a53'
-
-          # - openwrt_version: '24.10'
-          #   openwrt_build_version: '24.10.5'
-          #   arch: 'aarch64_cortex-a53'
+            openwrt_build_version: '25.12.2'
+            arch: 'mediatek-filogic'
+            target: 'mediatek/filogic'
 
           - openwrt_version: '24.10'
-            openwrt_build_version: '24.10.5'
+            openwrt_build_version: '24.10.6'
             arch: 'mediatek-filogic'
-            # arch: 'aarch64_cortex-a53'
             target: 'mediatek/filogic'
       fail-fast: false
 
@@ -40,7 +37,9 @@ jobs:
     with:
       package_name: 'gpio-fan-rpm'
       sdk_packages: 'gpio-fan-rpm'
-      artifacts_patterns: 'gpio-fan-rpm*.ipk'
+      artifacts_patterns: |
+        gpio-fan-rpm*.ipk
+        gpio-fan-rpm*.apk
       openwrt_version: ${{ matrix.openwrt_version }}
       openwrt_build_version: ${{ matrix.openwrt_build_version }}
       arch: ${{ matrix.arch }}
