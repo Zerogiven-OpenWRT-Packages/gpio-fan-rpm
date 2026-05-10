@@ -1,0 +1,48 @@
+name: Build OpenWRT package (test2)
+
+on:
+  workflow_dispatch:
+    inputs:
+      openwrt_version:
+        description: 'OpenWrt version to test'
+        required: true
+        default: '24.10'
+        type: choice
+        options:
+        - '24.10'
+        - '25.12'
+        - 'all'
+      verbose:
+        description: 'Verbose build output'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build-test:
+    strategy:
+      matrix:
+        include:
+          - openwrt_version: '25.12'
+            openwrt_build_version: '25.12.3'
+            arch: 'mediatek-filogic'
+            target: 'mediatek/filogic'
+
+          - openwrt_version: '24.10'
+            openwrt_build_version: '24.10.6'
+            arch: 'mediatek-filogic'
+            target: 'mediatek/filogic'
+      fail-fast: false
+
+    uses: Zerogiven/gh-openwrt-package-build-workflows/.github/workflows/reusable-build.yml@default-sdk-action
+    with:
+      package_name: 'gpio-fan-rpm'
+      sdk_packages: 'gpio-fan-rpm'
+      artifacts_patterns: |
+        gpio-fan-rpm*.ipk
+        gpio-fan-rpm*.apk
+      openwrt_version: ${{ matrix.openwrt_version }}
+      openwrt_build_version: ${{ matrix.openwrt_build_version }}
+      arch: ${{ matrix.arch }}
+      selected_version: ${{ github.event.inputs.openwrt_version }}
+      verbose: ${{ github.event.inputs.verbose == 'true' }}
