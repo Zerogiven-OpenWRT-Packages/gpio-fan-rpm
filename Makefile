@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME    := gpio-fan-rpm
 PKG_VERSION := 2.2.0
-PKG_RELEASE := 3
+PKG_RELEASE := 4
 
 PKG_MAINTAINER     := CSoellinger
 PKG_LICENSE        := LGPL-3.0-or-later
