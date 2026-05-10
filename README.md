@@ -9,8 +9,6 @@ A high-precision command-line utility for measuring fan RPM using GPIO edge dete
 
 This is an OpenWrt package for [https://github.com/CSoellinger/gpio-fan-rpm](https://github.com/CSoellinger/gpio-fan-rpm).
 
-> If you need support for OpenWrt 23.05 install version 1.x.
-
 <details>
 
 <summary>Navigation</summary>
@@ -36,6 +34,8 @@ This is an OpenWrt package for [https://github.com/CSoellinger/gpio-fan-rpm](htt
 - OpenWrt 24.10 or 25.12
 - libgpiod
 - Fan with tachometer output
+
+> If you need support for OpenWrt 23.05 install version 1.x.
 
 ## Installation
 
