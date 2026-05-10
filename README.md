@@ -1,4 +1,4 @@
-[![OpenWrt](https://img.shields.io/badge/OpenWrt-24.10.x-darkgreen.svg)](https://openwrt.org/)
+[![OpenWrt](https://img.shields.io/badge/OpenWrt-25.12%20%7C%2024.10-darkgreen.svg)](https://openwrt.org/)
 [![GitHub Release](https://img.shields.io/github/v/release/Zerogiven-OpenWRT-Packages/gpio-fan-rpm)](https://github.com/Zerogiven-OpenWRT-Packages/gpio-fan-rpm/releases)
 [![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Zerogiven-OpenWRT-Packages/gpio-fan-rpm/total?color=blue)](https://github.com/Zerogiven-OpenWRT-Packages/gpio-fan-rpm/releases)
 [![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/Zerogiven-OpenWRT-Packages/gpio-fan-rpm)](https://github.com/Zerogiven-OpenWRT-Packages/gpio-fan-rpm/issues)
@@ -33,7 +33,7 @@ This is an OpenWrt package for [https://github.com/CSoellinger/gpio-fan-rpm](htt
 
 ## Requirements
 
-- OpenWrt 24.10
+- OpenWrt 24.10 or 25.12
 - libgpiod
 - Fan with tachometer output
 
@@ -45,9 +45,17 @@ You can setup this package feed to install and update it with opkg:
 
 [https://github.com/Zerogiven-OpenWRT-Packages/package-feed](https://github.com/Zerogiven-OpenWRT-Packages/package-feed)
 
-### From IPK Package
+### From Package
 
+**OpenWrt 25.12** (apk):
 ```bash
+apk update
+apk add --allow-untrusted gpio-fan-rpm-*.apk
+```
+
+**OpenWrt 24.10** (opkg):
+```bash
+opkg update
 opkg install gpio-fan-rpm-*.ipk
 ```
 
