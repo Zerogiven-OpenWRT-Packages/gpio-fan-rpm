@@ -13,28 +13,28 @@ jobs:
         include:
           # 25.12
           - openwrt_version: '25.12'
-            openwrt_build_version: '25.12.2'
+            openwrt_build_version: '25.12.3'
             arch: 'x86_64'
           - openwrt_version: '25.12'
-            openwrt_build_version: '25.12.2'
+            openwrt_build_version: '25.12.3'
             arch: 'aarch64_cortex-a53'
           - openwrt_version: '25.12'
-            openwrt_build_version: '25.12.2'
+            openwrt_build_version: '25.12.3'
             arch: 'aarch64_cortex-a72'
           - openwrt_version: '25.12'
-            openwrt_build_version: '25.12.2'
+            openwrt_build_version: '25.12.3'
             arch: 'arm_cortex-a7'
           - openwrt_version: '25.12'
-            openwrt_build_version: '25.12.2'
+            openwrt_build_version: '25.12.3'
             arch: 'arm_cortex-a7_neon-vfpv4'
           - openwrt_version: '25.12'
-            openwrt_build_version: '25.12.2'
+            openwrt_build_version: '25.12.3'
             arch: 'arm_cortex-a9'
           - openwrt_version: '25.12'
-            openwrt_build_version: '25.12.2'
+            openwrt_build_version: '25.12.3'
             arch: 'mips_24kc'
           - openwrt_version: '25.12'
-            openwrt_build_version: '25.12.2'
+            openwrt_build_version: '25.12.3'
             arch: 'mipsel_24kc'
 
           # 24.10
@@ -64,7 +64,7 @@ jobs:
             arch: 'mipsel_24kc'
       fail-fast: false
 
-    uses: Zerogiven/gh-openwrt-package-build-workflows/.github/workflows/reusable-build.yml@prometheus-node-exporter-lua-patch
+    uses: Zerogiven/gh-openwrt-package-build-workflows/.github/workflows/reusable-build.yml@default-sdk-action
     with:
       package_name: 'gpio-fan-rpm'
       sdk_packages: 'gpio-fan-rpm'
@@ -75,12 +75,14 @@ jobs:
       openwrt_build_version: ${{ matrix.openwrt_build_version }}
       arch: ${{ matrix.arch }}
       verbose: false
+    secrets:
+      APK_SIGN_KEY: ${{ secrets.APK_SIGN_KEY }}
 
   create-release:
     needs: build-packages
     permissions:
       contents: write
-    uses: Zerogiven/gh-openwrt-package-build-workflows/.github/workflows/reusable-release.yml@prometheus-node-exporter-lua-patch
+    uses: Zerogiven/gh-openwrt-package-build-workflows/.github/workflows/reusable-release.yml@default-sdk-action
     with:
       artifact_pattern: 'gpio-fan-rpm-*'
       tag_name: ${{ github.ref_name }}
