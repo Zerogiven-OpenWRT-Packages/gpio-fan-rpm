@@ -46,3 +46,14 @@ jobs:
       arch: ${{ matrix.arch }}
       selected_version: ${{ github.event.inputs.openwrt_version }}
       verbose: ${{ github.event.inputs.verbose == 'true' }}
+
+  create-release:
+    needs: build-test
+    permissions:
+      contents: write
+    uses: Zerogiven/gh-openwrt-package-build-workflows/.github/workflows/reusable-release.yml@default-sdk-action
+    with:
+      artifact_pattern: 'gpio-fan-rpm-*'
+      draft: true
+    secrets:
+      RELEASE_TOKEN: ${{ secrets.OWRT_PACKAGE_RELEASE_TOKEN }}
