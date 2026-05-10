@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME    := gpio-fan-rpm
 PKG_VERSION := 2.2.0
-PKG_RELEASE := 2
+PKG_RELEASE := 3
 
 PKG_MAINTAINER     := CSoellinger
 PKG_LICENSE        := LGPL-3.0-or-later
@@ -13,7 +13,7 @@ PKG_SOURCE_URL     := https://github.com/CSoellinger/gpio-fan-rpm/archive/refs/t
 PKG_HASH           := 8c13c024597b81d062d3e9ebcded177b674df26811724714fa347b3a79d36c63
 PKG_INSTALL        := 1
 
-PKG_BUILD_DEPENDS  := libgpiod
+PKG_BUILD_DEPENDS  := libgpiod python-setuptools/host
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
